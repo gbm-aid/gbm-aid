@@ -1,4 +1,4 @@
-﻿import os
+import os
 from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 import psycopg2
@@ -88,8 +88,11 @@ def harmonize_patient(patient_id: str):
     Harmonizasyon pipeline'ini bir hasta icin calistirir:
     N4 -> Z-score -> ComBat -> segmentasyon.
     Mert/Nisa fonksiyonlari doldurulduktan sonra bu endpoint gercek
-    veriyle uctan uca calisacak. Su an stub'lar NotImplementedError firlatir,
-    bu da 501 olarak donuyor (henuz implemente edilmedi anlaminda).
+    veriyle uctan uca calisacak. Implementasyon eksikse cagri basarisiz
+    olmaz: 200 doner, ilgili modalite icin status alani 'pending' olur
+    ve detail alaninda ne eksik oldugu belirtilir. Boylece Mert/Nisa
+    entegrasyon sirasinda bu durumu hata (4xx/5xx) sanip yanlis
+    hata yonetimi yazmaz.
     """
     try:
         conn = get_db_connection()
