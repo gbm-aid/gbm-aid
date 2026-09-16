@@ -62,15 +62,29 @@ foreach ($k in $Klasorler) {
 }
 "{0} dosya + {1} klasor, toplam {2:N0} KB" -f $Dosyalar.Count, $Klasorler.Count, ($toplam / 1KB)
 
+# 🔴 2026-09-16 HATA DUZELTMESI (canli kurulumda yakalandi):
+#   Eskiden uzak dizin soyle hesaplaniyordu:
+#       (Split-Path $_ -Parent).Replace("artifacts/", "")
+#   `Split-Path` Windows'ta TERS EGIK CIZGI dondurur (`artifacts\week3\...`),
+#   bu yuzden `"artifacts/"` araması ESLESMIYOR ve onek SILINMIYORDU. Sonuc:
+#   dosyalar `/opt/gbmaid/artifacts/artifacts/week3/...` altina, yani
+#   `artifacts` IKI KERE yazilmis bir yola gidiyordu (FAISS klasorleri dogru
+#   yerdeydi cunku onlarin hedefi elle yazilmisti -- bu yuzden hata sessiz
+#   kalmisti). Cozum: once ayraclari normalize et, SONRA oneki sil.
+function UzakDizin([string]$yerelYol) {
+    $ebeveyn = (Split-Path $yerelYol -Parent) -replace '\\', '/'
+    $bagil = $ebeveyn -replace '^artifacts/', ''
+    return "$Hedef/$bagil"
+}
+
 Write-Host "`n--- uzak klasorler aciliyor ---"
-$uzakDizinler = ($Dosyalar | ForEach-Object { "$Hedef/" + (Split-Path $_ -Parent).Replace("artifacts/", "").Replace("\", "/") }) |
-                Select-Object -Unique
+$uzakDizinler = ($Dosyalar | ForEach-Object { UzakDizin $_ }) | Select-Object -Unique
 ssh "$Kullanici@$SunucuIP" ("mkdir -p " + ($uzakDizinler -join " ") + " $Hedef/week3")
 
 Write-Host "`n--- dosyalar kopyalaniyor ---"
 foreach ($d in $Dosyalar) {
-    $uzakDizin = "$Hedef/" + (Split-Path $d -Parent).Replace("artifacts/", "").Replace("\", "/")
-    Write-Host "   $d"
+    $uzakDizin = UzakDizin $d
+    Write-Host "   $d  ->  $uzakDizin"
     scp $d "${Kullanici}@${SunucuIP}:$uzakDizin/"
 }
 
