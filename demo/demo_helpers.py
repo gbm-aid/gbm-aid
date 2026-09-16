@@ -891,26 +891,25 @@ def list_mr_t1ce_scans(patient_id: str) -> dict[str, Any]:
 
 
 def _resolve_ucsf_display_pair(image_path: Path) -> tuple[Path, str]:
-    """UCSF icin (maske, mask_source). `tools/run_pyradiomics_ucsf.py`
-    sozlesmesinin BIREBIR kopyasi -- bkz. bu bolumun basindaki
-    "UCSF ISTISNASI" notu."""
+    """UCSF icin (maske, mask_source).
 
-    from pipeline.harmonization import _nifti_stem
+    🔴 2026-09-16: BU FONKSIYONUN GOVDESI ARTIK BURADA DEGIL. Kural
+    `pipeline/segmentation.py::_ucsf_mask()`'e TASINDI ve `resolve_ready_mask()`
+    uzerinden uretim yoluna baglandi; burada yalnizca ona DELEGE eden ince bir
+    sarmalayici kaldi. Gerekce: ayni kuralin ikinci bir nushasi kacinilmaz
+    olarak sapar (`CLAUDE.md` kalem-41 karari) ve demo ile uretimin FARKLI
+    maske secmesi sessiz bir tutarsizlik olurdu.
 
-    stem = _nifti_stem(image_path)
-    if not stem.endswith("_T1c"):
-        raise FileNotFoundError(
-            f"UCSF T1c dosya adi beklenen desende degil ('*_T1c'): {image_path}"
-        )
-    base = stem[: -len("_T1c")]
-    for suffix in (".nii.gz", ".nii"):
-        candidate = image_path.parent / f"{base}_tumor_segmentation{suffix}"
-        if candidate.is_file():
-            return candidate, "ucsf_native"
-    raise FileNotFoundError(
-        "UCSF hazir tumor maskesi bulunamadi: "
-        f"{image_path.parent / (base + '_tumor_segmentation.nii.gz')}"
-    )
+    Imza ve HATA TIPI KORUNDU: `ReadyMaskNotFoundError` zaten
+    `FileNotFoundError`'dan turer (`pipeline/segmentation.py:24`), bu yuzden
+    `except FileNotFoundError` yazan eski cagirilar aynen calismaya devam eder
+    -- ayrica bir cevrim GEREKMEZ.
+    """
+
+    from pipeline.segmentation import _ucsf_mask
+
+    mask, mask_source, _uyarilar = _ucsf_mask(image_path)
+    return mask, mask_source
 
 
 def _resolve_display_pair(

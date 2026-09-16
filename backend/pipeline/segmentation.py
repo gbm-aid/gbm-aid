@@ -43,6 +43,35 @@ def nas_root() -> Path:
     return root
 
 
+#: UCSF hasta klasorleri her zaman `UCSF-PDGM-<no>_nifti` desenindedir; baska
+#: hicbir kaynakta bu desen YOKTUR, bu yuzden yolun KENDISINDEN hangi koke ait
+#: oldugu anlasilir ve `resolve_nas_path()`'e ayri bir `source` parametresi
+#: eklemek GEREKMEZ (o fonksiyon ~10 yerden cagriliyor).
+_UCSF_DIZIN_ONEKI = "UCSF-PDGM-"
+
+
+def ucsf_root() -> Path:
+    """UCSF-PDGM goruntu kokunu ortamdan oku.
+
+    🔴 **UCSF NAS'ta DEGILDIR** (2026-09-15 olcumu) -- ayri bir diskte/dizinde
+    durur, bu yuzden kendi koku vardir. `GBMAID_UCSF_ROOT` tanimli degilse
+    `GBMAID_NAS_ROOT`'a duser; bu bir "sessiz fallback" DEGIL, belgelenmis
+    varsayilandir: dagitim sunucusunda UCSF de NAS koku altina kopyalanacagi
+    icin (karar: 6,47 GB secici kopya) orada tek kok yeterlidir. Gelistirme
+    makinesinde UCSF yerel diskte durdugu icin degisken ACIKCA tanimlanir.
+
+    Karar: decisions/2026-09-15-ucsf-mr-goruntuleri-canlida-gosterilecek.md
+    """
+
+    configured = os.environ.get("GBMAID_UCSF_ROOT")
+    if not configured:
+        return nas_root()
+    root = Path(configured).expanduser()
+    if not root.is_dir():
+        raise FileNotFoundError(f"UCSF kökü erişilebilir değil: {root}")
+    return root
+
+
 def resolve_nas_path(
     stored_path: str | Path,
     *,
@@ -59,10 +88,16 @@ def resolve_nas_path(
     if direct.is_absolute():
         resolved = direct
     else:
-        base = Path(root).expanduser() if root is not None else nas_root()
         relative = PurePosixPath(raw.replace("\\", "/"))
         if relative.is_absolute() or ".." in relative.parts:
             raise ValueError(f"Güvensiz NAS göreli yolu: {stored_path}")
+        if root is not None:
+            base = Path(root).expanduser()
+        elif relative.parts and relative.parts[0].startswith(_UCSF_DIZIN_ONEKI):
+            # 2026-09-16: UCSF kendi kokunde durur -- bkz. `ucsf_root()`.
+            base = ucsf_root()
+        else:
+            base = nas_root()
         resolved = base.joinpath(*relative.parts)
 
     if require_file and not resolved.is_file():
@@ -202,6 +237,39 @@ def _lumiere_mask(image_path: Path) -> tuple[Path, Path, str, list[str]]:
     )
 
 
+def _ucsf_mask(image_path: Path) -> tuple[Path, str, list[str]]:
+    """UCSF-PDGM hazır tümör maskesini çöz: `<ad>_T1c` -> `<ad>_tumor_segmentation`.
+
+    🔴 2026-09-16'da `demo/demo_helpers.py::_resolve_ucsf_display_pair()`'den
+    ÜRETİME TAŞINDI (kopyalanmadı). Gerekçe `decisions/2026-09-15-ucsf-mr-
+    goruntuleri-canlida-gosterilecek.md` Adım 1: kural demo katmanında
+    çalışıyordu ama `resolve_ready_mask()` UCSF'i HİÇ tanımıyordu, dolayısıyla
+    üretim yolunda UCSF maskesi çözülemiyordu. Demo artık bu fonksiyonu ÇAĞIRIR
+    -- ikinci nüsha YOKTUR (`CLAUDE.md` kalem-41: *"aynı kuralın üçüncü kopyası
+    kaçınılmaz olarak sapar"*).
+
+    Sözleşme kaynağı: `tools/run_pyradiomics_ucsf.py`. UCSF'te hasta başına tek
+    zaman noktası ve tek maske vardır; TCGA'daki `whole`/`core` geri düşüşü veya
+    UPenn'deki `automated_approx` geri düşüşü UCSF için TANIMLI DEĞİLDİR --
+    maske yoksa sessizce başka bir şeye düşmek YASAK, hata yükseltilir.
+    """
+
+    stem = _nifti_stem(image_path)
+    if not stem.endswith("_T1c"):
+        raise ReadyMaskNotFoundError(
+            f"UCSF T1c dosya adı beklenen desende değil ('*_T1c'): {image_path}"
+        )
+    base = stem[: -len("_T1c")]
+    for suffix in (".nii.gz", ".nii"):
+        candidate = image_path.parent / f"{base}_tumor_segmentation{suffix}"
+        if candidate.is_file():
+            return candidate, "ucsf_native", []
+    raise ReadyMaskNotFoundError(
+        "UCSF hazır tümör maskesi bulunamadı: "
+        f"{image_path.parent / (base + '_tumor_segmentation.nii.gz')}"
+    )
+
+
 def resolve_ready_mask(
     *,
     source: str,
@@ -236,6 +304,11 @@ def resolve_ready_mask(
         resolved_image = image
     elif canonical == "LUMIERE":
         mask, resolved_image, mask_source, warnings = _lumiere_mask(image)
+    elif canonical == "UCSF":
+        # 2026-09-16: UCSF kolu EKLENDI -- daha once bu dal YOKTU ve UCSF
+        # "tanimsiz kaynak" diye reddediliyordu (bkz. `_ucsf_mask` dokstring'i).
+        mask, mask_source, warnings = _ucsf_mask(image)
+        resolved_image = image
     else:
         raise ValueError(f"Hazır maske sözleşmesi tanımsız kaynak: {canonical}")
 
