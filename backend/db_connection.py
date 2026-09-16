@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from psycopg2.extensions import connection
 
 
-PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parent.parent
+PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[2]  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 ENV_FILE: Final[Path] = PROJECT_ROOT / ".env"
 
 

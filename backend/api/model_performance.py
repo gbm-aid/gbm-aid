@@ -47,7 +47,7 @@ router = APIRouter()
 # `.absolute()` -- `.resolve()` DEGIL, ayni gerekce `api/similar.py`'deki
 # gibi (Turkce-karakterli yol riski -- bu modul faiss/ITK okumuyor ama
 # tutarlilik icin ayni desen korunuyor).
-REPO_ROOT = Path(__file__).absolute().parent.parent
+REPO_ROOT = Path(__file__).absolute().parents[2]  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 
 COX_VARIANTS_CSV = REPO_ROOT / "artifacts" / "week3" / "cox_model" / "week3_all_variants_comparison.csv"
 COX_EXTERNAL_METRICS_CSV = (

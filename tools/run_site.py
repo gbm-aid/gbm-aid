@@ -162,11 +162,26 @@ def main() -> int:
 
     # 🔴 TEK ISCI -- SHAP arka plan onbellegi surec-icidir; coklu isci hem
     #    bellegi hem soguk baslangici carpar (2026-09-16 olcumu).
+    #
+    # 2026-09-16 (klasor yapisi): `api/` ve `pipeline/` artik `backend/`
+    # altinda. Import ADLARI DEGISMEDI (`api.main:app`, `from pipeline.x`),
+    # bu yuzden uvicorn'un AYRI surecine `backend` arama yolu ORTAM
+    # DEGISKENIYLE gecirilir -- `cwd` tek basina yetmez, cunku `-m uvicorn`
+    # sys.path[0]'a uvicorn'un kendi dizinini koyar.
+    ortam = dict(os.environ)
+    mevcut = ortam.get("PYTHONPATH", "")
+    backend_yolu = str(KOD_KOKU / "backend")
+    if backend_yolu not in mevcut.split(os.pathsep):
+        ortam["PYTHONPATH"] = (
+            backend_yolu + (os.pathsep + mevcut if mevcut else "")
+        )
+
     return subprocess.call(
         [sys.executable, "-m", "uvicorn", "api.main:app",
          "--host", args.host, "--port", str(args.port),
          "--workers", "1", "--log-level", args.log_level],
         cwd=str(KOD_KOKU),
+        env=ortam,
     )
 
 

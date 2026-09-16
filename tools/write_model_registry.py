@@ -46,11 +46,14 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # gbm-aid mert/tools -> gbm-aid mert
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
 from db_connection import get_connection  # noqa: E402
 
 ARTIFACT_DIR = PROJECT_ROOT / "artifacts" / "week3" / "cox_model"
-MODELS_DIR = PROJECT_ROOT / "models"
+MODELS_DIR = PROJECT_ROOT / "backend" / "models"  # 2026-09-16: models/ backend/ altina tasindi
 
 MODEL_NAME = "cox_phm"
 STATUS = "shadow"  # mimari v4.5 SS6.5 -- yeni versiyon DOGRUDAN production'a gecmez, KILITLI

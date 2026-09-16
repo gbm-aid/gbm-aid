@@ -44,7 +44,7 @@ from db_connection import get_connection  # noqa: E402
 from pipeline.cox_model import build_training_frame, pivot_radiomics_long_to_wide  # noqa: E402
 
 COX_DIR = Path("artifacts/week3/cox_model")
-MODELS_DIR = Path("models")
+MODELS_DIR = Path("backend") / "models"  # 2026-09-16: models/ backend/ altina tasindi
 ARTIFACT = MODELS_DIR / "cox_phm_primary_wt93_clinical_full_ucsf_2026-08-18.pkl"
 
 

@@ -26,6 +26,16 @@ dogrulamasi icindir.
 """
 from __future__ import annotations
 
+# 2026-09-16: sabit kodlanmis mutlak yollar KALDIRILDI -- kullanici dizini
+# adi halka acik depoya siziyordu ve bu script baska makinede calismiyordu.
+# Yollar artik dosyanin kendi konumundan / ortam degiskeninden turetilir.
+import os as _os
+from pathlib import Path as _P
+_BURASI   = _P(__file__).resolve().parent          # tools/_dogrulama
+_KOK_KOD  = _P(__file__).resolve().parents[2]      # gbm-aid mert
+_KOK_PROJ = _P(__file__).resolve().parents[3]      # GBM-AID Prototip
+_VERI_KOKU = _P(_os.environ.get('GBMAID_VERI_KOKU', str(_KOK_PROJ)))
+
 import json
 import math
 import sys
@@ -34,22 +44,21 @@ from pathlib import Path
 
 import numpy as np
 
-PROJECT_ROOT = Path(r"Y:\gbm-aid mert")
+PROJECT_ROOT = _KOK_KOD
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import os
 
 SCRATCH = Path(
-    r"C:\Users\BAR~1\AppData\Local\Temp\claude\C--Users-Bar---Desktop-GBM-AID-Prototip"
-    r"\0147f9fb-cb88-4c3a-ade8-9bd39dd90392\scratchpad"
+    _BURASI / 'scratchpad'
 )
 os.environ["GBMAID_PROCESSED_ROOT"] = str(SCRATCH / "ucsf_pilot_n4")
 
 from pipeline.harmonization import apply_n4_bias_correction  # noqa: E402
 from pipeline.resampling import validate_image_mask_geometry  # noqa: E402
 
-DATA_ROOT = Path(r"Y:\PKG - UCSF-PDGM Version 5\UCSF-PDGM-v5")
+DATA_ROOT = Path(str(_VERI_KOKU / r'PKG - UCSF-PDGM Version 5\UCSF-PDGM-v5'))
 PILOT_LIST = SCRATCH / "pilot_5_patients.txt"
 
 REGION_LABELS_UCSF = {"NC": 1, "ED": 2, "ET": 4}  # UPenn ile BIREBIR ayni (olcumle dogrulandi)

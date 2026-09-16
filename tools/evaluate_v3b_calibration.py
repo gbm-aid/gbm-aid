@@ -68,6 +68,9 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).absolute().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 sys.path.insert(0, str(PROJECT_ROOT / "tools"))
 
 import evaluate_external_metrics as eem  # noqa: E402
@@ -79,7 +82,7 @@ from sksurv.util import Surv  # noqa: E402
 
 OUT_DIR = eem.OUT_DIR
 NAME = "v3b_lowvar_v2amgmt"
-PKL = PROJECT_ROOT / "models" / "cox_phm_v3b_lowvar_v2amgmt_2026-09-12.pkl"
+PKL = PROJECT_ROOT / "backend" / "models" / "cox_phm_v3b_lowvar_v2amgmt_2026-09-12.pkl"
 TIMES = [365, 548, 730]
 N_CAL_BINS = 10
 

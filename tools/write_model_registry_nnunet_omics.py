@@ -5,7 +5,7 @@ CSV/JSON'lardan metrik okuyor) -- bu iki model o desene UYMUYOR: `nnunet`
 uculcu parti bir pretrained model (bizim tarafimizdan EGITILMEDI), `omics_
 scorer` ise kod-icindeki sabit formul/esiklerden olusuyor (egitim/CV
 metrigi YOK). Bu yuzden metrikler burada, KAYNAK DOSYALARINA (docs/
-nnunet_new_patient_demo.md, hafta2_mert_ozet.md, pipeline/omics_scores.py,
+nnunet_new_patient_demo.md, docs/hafta2_mert_ozet.md, pipeline/omics_scores.py,
 decisions/2026-08-18-omics-skor-formulleri-ve-esikler.md) DAYANARAK, db-agent
 tarafindan 2026-09-12'de elle DERLENDI -- HICBIR SAYI otomatik dosyadan
 okunmuyor (cox_phm script'inin yaptigi gibi), bu yuzden her deger yaninda
@@ -30,12 +30,15 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # gbm-aid mert/tools -> gbm-aid mert
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
 from db_connection import get_connection  # noqa: E402
 
 
 def _build_nnunet_row() -> dict:
-    """Kaynaklar: docs/nnunet_new_patient_demo.md, hafta2_mert_ozet.md SS2.8/3.3,
+    """Kaynaklar: docs/nnunet_new_patient_demo.md, docs/hafta2_mert_ozet.md SS2.8/3.3,
     pipeline/new_patient_segmentation.py, pipeline/nnunet_runtime.py,
     tools/install_brats_pretrained_model.py."""
     metrics = {
@@ -82,7 +85,7 @@ def _build_nnunet_row() -> dict:
         "preflight_result": (
             "PASS -- MD5 dogrulandi, kanal sirasi T1/T1ce/T2/FLAIR PASS, "
             "izinli etiketler 0/1/2/4 PASS, predictor executable bulundu "
-            "(bkz. hafta2_mert_ozet.md SS2.8, tools/nnunet_demo_preflight.py)."
+            "(bkz. docs/hafta2_mert_ozet.md SS2.8, tools/nnunet_demo_preflight.py)."
         ),
         "real_inference_run": False,
         "dsc_measured": False,
@@ -90,7 +93,7 @@ def _build_nnunet_row() -> dict:
         "dsc_note": (
             "Gercek nnU-Net inference'i HENUZ hicbir etiketli yeni-hasta "
             "demo vakasinda CALISTIRILMADI (2026-09-12 itibariyle, "
-            "hafta2_mert_ozet.md SS3.3 + Eylul loglarinda guncelleme "
+            "docs/hafta2_mert_ozet.md SS3.3 + Eylul loglarinda guncelleme "
             "bulunamadi) -- confidence_score=None donuyor, uydurma guven "
             "skoru YOK. DSC>=0.85 bir UeRETIM KABUL HEDEFIDIR, "
             "'ULASILDI' OLARAK RAPORLANAMAZ."

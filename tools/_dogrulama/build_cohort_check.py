@@ -5,13 +5,22 @@ SALT-OKUNUR, hicbir dosyaya yazmiyor, kohort DONDURMUYOR.
 """
 from __future__ import annotations
 
+# 2026-09-16: sabit kodlanmis mutlak yollar KALDIRILDI -- kullanici dizini
+# adi halka acik depoya siziyordu ve bu script baska makinede calismiyordu.
+# Yollar artik dosyanin kendi konumundan / ortam degiskeninden turetilir.
+import os as _os
+from pathlib import Path as _P
+_BURASI   = _P(__file__).resolve().parent          # tools/_dogrulama
+_KOK_KOD  = _P(__file__).resolve().parents[2]      # gbm-aid mert
+_KOK_PROJ = _P(__file__).resolve().parents[3]      # GBM-AID Prototip
+_VERI_KOKU = _P(_os.environ.get('GBMAID_VERI_KOKU', str(_KOK_PROJ)))
+
 import csv
 from pathlib import Path
 
-META = Path(r"Y:\raw\veri\ucsf-pdgm\metadata\UCSF-PDGM-metadata_v5.csv")
+META = Path(str(_VERI_KOKU / r'raw\veri\ucsf-pdgm\metadata\UCSF-PDGM-metadata_v5.csv'))
 AVAILABLE = Path(
-    r"C:\Users\BAR~1\AppData\Local\Temp\claude\C--Users-Bar---Desktop-GBM-AID-Prototip"
-    r"\0147f9fb-cb88-4c3a-ade8-9bd39dd90392\scratchpad\available_patients.txt"
+    _BURASI / 'available_patients.txt'
 )
 
 with open(AVAILABLE, "r", encoding="utf-8") as fh:
@@ -58,8 +67,7 @@ print(f"uygun kohortta olup DISKTE OLMAYAN: {len(missing_from_disk)}")
 pilot_ids = sorted(intersect)[:5]
 print("PILOT_5:", pilot_ids)
 out = Path(
-    r"C:\Users\BAR~1\AppData\Local\Temp\claude\C--Users-Bar---Desktop-GBM-AID-Prototip"
-    r"\0147f9fb-cb88-4c3a-ade8-9bd39dd90392\scratchpad\pilot_5_patients.txt"
+    _BURASI / 'pilot_5_patients.txt'
 )
 out.write_text("\n".join(pilot_ids) + "\n", encoding="utf-8")
 

@@ -52,7 +52,7 @@ router = APIRouter()
 
 # `.absolute()` -- `.resolve()` DEGIL, ayni gerekce `api/model_performance.py`
 # ve `api/similar.py`'deki gibi (Turkce-karakterli yol riski).
-REPO_ROOT = Path(__file__).absolute().parent.parent
+REPO_ROOT = Path(__file__).absolute().parents[2]  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 
 COX_CALIBRATION_365_CSV = (
     REPO_ROOT / "artifacts" / "week3" / "cox_model" / "week3_v3b_calibration_365.csv"

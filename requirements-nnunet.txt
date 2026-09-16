@@ -1,3 +1,9 @@
+# AYRI SANAL ORTAM -- `requirements.txt` ile AYNI ortama KURULMAZ.
+# Gerekce: nnU-Net'in pinledigi `torch==2.6.0`, servis yolunun pinledigi
+# `torch==2.13.0` (requirements.txt) ile CAKISIR. nnU-Net yalniz yeni-hasta
+# demo fallback'idir ve varsayilan olarak KAPALIDIR
+# (`GBMAID_ENABLE_NEW_PATIENT_NNUNET=0`), bu yuzden servis ortamina hic
+# kurulmasi gerekmez. (2026-09-16'da eklendi -- bu uyari eksikti.)
 # PyTorch GPU wheel must be installed first with the hardware-specific command
 # documented in docs/nnunet_new_patient_demo.md.
 torch==2.6.0

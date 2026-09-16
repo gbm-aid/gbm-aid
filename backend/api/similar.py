@@ -151,7 +151,7 @@ router = APIRouter()
 
 # `.absolute()` -- `.resolve()` DEĞİL (bkz. modül dokstring'i "BİLİNEN
 # İŞLETİMSEL RİSK" + `tests/test_no_resolve_path_regression.py`).
-REPO_ROOT = Path(__file__).absolute().parent.parent
+REPO_ROOT = Path(__file__).absolute().parents[2]  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 
 DEFAULT_CLINICAL_RADIOMICS_INDEX_DIR = REPO_ROOT / "artifacts" / "week3" / "faiss_index"
 DEFAULT_MOLECULAR_OMICS_INDEX_DIR = REPO_ROOT / "artifacts" / "week3" / "molecular_omics"

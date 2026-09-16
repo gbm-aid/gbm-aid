@@ -16,7 +16,7 @@ match_status'u yazmaya calisan bir kod yolu YOKTUR; boyle bir tutarsizlik
 tespit edilirse script FAIL-LOUD (RuntimeError) ile durur, sessizce atlamaz.
 
 KAPSAM: SADECE `followup_series.source_id=3` (LUMIERE) satirlari -- 616/616
-satir (hafta2_mert_ozet.md'nin "RED: followup_series.scan_id LUMIERE 616/616
+satir (docs/hafta2_mert_ozet.md'nin "RED: followup_series.scan_id LUMIERE 616/616
 NULL" bulgusuyla BIREBIR ayni sayi, canli 2026-09-12 SELECT ile dogrulandi).
 `source_id=1` (TCGA-GBM, 280 satir) BU SCRIPT'IN KAPSAMI DISINDA -- o
 satirlarin kaynagi `pipeline/growth_simulation.py` DEGIL (o modul SADECE
@@ -94,6 +94,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # gbm-aid mert/tools -> gbm-aid mert
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
 from db_connection import get_connection  # noqa: E402
 from pipeline.growth_simulation import (  # noqa: E402

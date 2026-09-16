@@ -41,6 +41,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
 import numpy as np
 import pandas as pd

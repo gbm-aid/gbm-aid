@@ -48,6 +48,9 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).absolute().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 sys.path.insert(0, str(PROJECT_ROOT / "tools"))
 
 import evaluate_external_metrics as eem  # noqa: E402

@@ -1,6 +1,16 @@
+
+# 2026-09-16: sabit kodlanmis mutlak yollar KALDIRILDI -- kullanici dizini
+# adi halka acik depoya siziyordu ve bu script baska makinede calismiyordu.
+# Yollar artik dosyanin kendi konumundan / ortam degiskeninden turetilir.
+import os as _os
+from pathlib import Path as _P
+_BURASI   = _P(__file__).resolve().parent          # tools/_dogrulama
+_KOK_KOD  = _P(__file__).resolve().parents[2]      # gbm-aid mert
+_KOK_PROJ = _P(__file__).resolve().parents[3]      # GBM-AID Prototip
+_VERI_KOKU = _P(_os.environ.get('GBMAID_VERI_KOKU', str(_KOK_PROJ)))
 import os, re, csv, json, hashlib
 
-ROOT = r"C:\Users\Barış\Desktop\GBM-AID Prototip"
+ROOT = str(_KOK_PROJ)
 BASE = os.path.join(ROOT, "PKG - UCSF-PDGM Version 5", "UCSF-PDGM-v5")
 META = os.path.join(ROOT, "raw", "veri", "ucsf-pdgm", "metadata", "UCSF-PDGM-metadata_v5.csv")
 

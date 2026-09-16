@@ -110,7 +110,7 @@ DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RETRIES = 1
 DEFAULT_MAX_OUTPUT_TOKENS = 900
 
-_PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT: Path = Path(__file__).resolve().parents[3]  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 _ENV_FILE: Path = _PROJECT_ROOT / ".env"
 _dotenv_lock = threading.Lock()
 _dotenv_loaded = False

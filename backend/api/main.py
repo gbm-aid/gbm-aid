@@ -108,7 +108,7 @@ _static_logger = logging.getLogger("api.static")
 # `web/` dizini henüz yok/boş OLABİLİR (paralel-37 orada eşzamanlı
 # çalışıyor, AKTIF-GOREVLER.md) -- mount PATLAMAZ, zarifçe ATLANIR ve
 # AÇIKÇA loglanır (sessiz atlama YOK).
-_WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+_WEB_DIR = Path(__file__).resolve().parents[2] / "frontend"  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 if _WEB_DIR.is_dir():
     app.mount("/app", StaticFiles(directory=str(_WEB_DIR), html=True), name="web-app")
 else:

@@ -4,13 +4,23 @@ Hicbir dosyaya yazmiyor (stdout haric). raw/ veya artifacts/'a DOKUNMAZ.
 """
 from __future__ import annotations
 
+# 2026-09-16: sabit kodlanmis mutlak yollar KALDIRILDI -- kullanici dizini
+# adi halka acik depoya siziyordu ve bu script baska makinede calismiyordu.
+# Yollar artik dosyanin kendi konumundan / ortam degiskeninden turetilir.
+import os as _os
+from pathlib import Path as _P
+_BURASI   = _P(__file__).resolve().parent          # tools/_dogrulama
+_KOK_KOD  = _P(__file__).resolve().parents[2]      # gbm-aid mert
+_KOK_PROJ = _P(__file__).resolve().parents[3]      # GBM-AID Prototip
+_VERI_KOKU = _P(_os.environ.get('GBMAID_VERI_KOKU', str(_KOK_PROJ)))
+
 import sys
 from pathlib import Path
 
 import numpy as np
 import SimpleITK as sitk
 
-ROOT = Path(r"Y:\PKG - UCSF-PDGM Version 5\UCSF-PDGM-v5")
+ROOT = Path(str(_VERI_KOKU / r'PKG - UCSF-PDGM Version 5\UCSF-PDGM-v5'))
 LIST_FILE = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 N = int(sys.argv[2]) if len(sys.argv) > 2 else 25
 

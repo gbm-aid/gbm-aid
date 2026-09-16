@@ -56,6 +56,9 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).absolute().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 sys.path.insert(0, str(PROJECT_ROOT / "tools"))
 
 import train_cox_week3 as w3  # noqa: E402
@@ -72,7 +75,7 @@ from sksurv.util import Surv  # noqa: E402
 
 OUT_DIR = PROJECT_ROOT / "artifacts" / "week3" / "cox_model"
 CACHE = OUT_DIR / "_cache"
-PKL = PROJECT_ROOT / "models" / "cox_phm_primary_wt93_clinical_full_ucsf_2026-08-18.pkl"
+PKL = PROJECT_ROOT / "backend" / "models" / "cox_phm_primary_wt93_clinical_full_ucsf_2026-08-18.pkl"
 EVAL_CHAIN_C = 0.6780636686756297  # degerlendirme zincirinin C'si
 COEF_GATE_TOL = 1e-5
 TIMES = [365, 548, 730]

@@ -344,7 +344,10 @@ def test_k2_canonical_visit_rule_has_a_single_source_of_truth() -> None:
     # bir durum, bu gorevde DEGISTIRILMEDI.
     original_sys_path = list(sys.path)
     try:
-        sys.path.insert(0, str(Path(predict_module.__file__).absolute().parents[1] / "tools"))
+        # 2026-09-16: `api/` `backend/` altina tasindi -> `predict.py`'nin
+        # parents[1]'i artik `backend/`; `tools/` ise KOKTE kaldi, bu yuzden
+        # bir seviye daha yukari cikilir.
+        sys.path.insert(0, str(Path(predict_module.__file__).absolute().parents[2] / "tools"))
         import rebuild_faiss_indexes as rfi
     finally:
         sys.path[:] = original_sys_path
@@ -2294,6 +2297,7 @@ def test_predict_patient_end_to_end_applies_feature_standardization(monkeypatch,
 
 V1_PINNED_CHECKPOINT_PATH = (
     predict_module.REPO_ROOT
+    / "backend"          # 2026-09-16: models/ backend/ altina tasindi
     / "models"
     / "cox_phm_primary_wt93_clinical_full_ucsf_2026-08-18.pkl"
 )

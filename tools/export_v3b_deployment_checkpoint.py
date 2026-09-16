@@ -47,7 +47,7 @@ from psycopg2.extras import RealDictCursor  # noqa: E402
 
 OUTPUT_DIR = REPO_ROOT / "artifacts" / "week3" / "cox_model"
 CACHE_DIR = OUTPUT_DIR / "_cache"
-MODELS_DIR = REPO_ROOT / "models"
+MODELS_DIR = REPO_ROOT / "backend" / "models"  # 2026-09-16: models/ backend/ altina tasindi
 FINAL_COEFFICIENTS_CSV = OUTPUT_DIR / "week3_v3b_lowvar_v2amgmt_final_coefficients.csv"
 CHECKPOINT_OUT_PATH = MODELS_DIR / "cox_phm_v3b_lowvar_v2amgmt_2026-09-12.pkl"
 

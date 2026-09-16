@@ -341,7 +341,7 @@ router = APIRouter()
 # (olculdu: 123 passed -> 122 passed + 1 skipped, yani kritik env-override
 # korumasi inert kalirdi). `db_connection.py:18` de AYNI sebeple
 # `.resolve()` kullaniyor (`PROJECT_ROOT` -> `ENV_FILE`).
-REPO_ROOT = Path(__file__).resolve().parent.parent  # lint-allow-resolve: proje kokundeki .env'e ulasmak icin gerekli, bu modul goruntu YAZMAZ
+REPO_ROOT = Path(__file__).resolve().parents[2]  # lint-allow-resolve: proje kokundeki .env'e ulasmak icin gerekli, bu modul goruntu YAZMAZ
 
 # =====================================================================
 # VARSAYILAN COX CHECKPOINT'I -- 2026-09-13 DUZELTMESI (backend-agent-K)
@@ -377,13 +377,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent  # lint-allow-resolve: proje 
 # isaret etmek HALA mumkun. Bu sabitin DEGERI bir REGRESYON TESTIYLE
 # PINLENDI (`test_default_checkpoint_path_is_pinned_to_v3b`): biri ileride
 # sessizce baska bir dosyaya cevirirse test KIRMIZI olur.
-DEFAULT_CHECKPOINT_PATH = REPO_ROOT / "models" / "cox_phm_v3b_lowvar_v2amgmt_2026-09-12.pkl"
+DEFAULT_CHECKPOINT_PATH = REPO_ROOT / "backend" / "models" / "cox_phm_v3b_lowvar_v2amgmt_2026-09-12.pkl"
 
 # v1 (2026-08-18 -- 2026-09-13 arasi varsayilan): kod icinde ARTIK
 # KULLANILMIYOR ama dosya diskte DURUYOR ve `tests/test_api_predict.py`'nin
 # pinlenmis sifir-regresyon baseline'i ONU acikca yukler. Silinmez/tasinmaz.
 V1_BASELINE_CHECKPOINT_PATH = (
     REPO_ROOT
+    / "backend"          # 2026-09-16: models/ backend/ altina tasindi
     / "models"
     / "cox_phm_primary_wt93_clinical_full_ucsf_2026-08-18.pkl"
 )
@@ -699,7 +700,7 @@ LUMIERE_EXPERT_RATING_CSV_PATH = DEFAULT_LUMIERE_EXPERT_RATING_CSV
 # dokstring'i "XGBOOST IKINCI KATMAN -- shadow".
 # =====================================================================
 DEFAULT_XGBOOST_CHECKPOINT_PATH = (
-    REPO_ROOT / "models" / "xgboost_v2a_mgmt_reduce_collinearity_2026-09-13.pkl"
+    REPO_ROOT / "backend" / "models" / "xgboost_v2a_mgmt_reduce_collinearity_2026-09-13.pkl"
 )
 XGBOOST_CHECKPOINT_ENV_VAR = "GBMAID_XGBOOST_CHECKPOINT_PATH"
 XGBOOST_ENABLE_ENV_VAR = "GBMAID_ENABLE_XGBOOST_SHADOW"

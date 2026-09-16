@@ -26,7 +26,7 @@ import pandas as pd
 from pipeline.lazy_sitk import sitk  # 2026-09-16: TEMBEL import (SAC blogu) -- bkz. pipeline/lazy_sitk.py
 
 
-PROJECT_ROOT = Path(__file__).absolute().parents[1]
+PROJECT_ROOT = Path(__file__).absolute().parents[2]  # 2026-09-16: backend/ altina tasindi -> bir seviye daha yukari
 # ------------------------------------------------------------------
 # Kaynak kanonikleştirme -- 2026-09-14'te `pipeline/source_canonical.py`'ye
 # TAŞINDI (B1, Barış onayı: "b1 i uygula, sac a dokunma").

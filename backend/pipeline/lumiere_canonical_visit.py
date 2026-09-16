@@ -82,7 +82,7 @@ import pandas as pd
 
 # `.absolute()` -- `.resolve()` DEGIL (K12, bkz. modul dokstring'i).
 PIPELINE_DIR = Path(__file__).absolute().parent
-CODE_ROOT = PIPELINE_DIR.parent  # "gbm-aid mert"
+CODE_ROOT = PIPELINE_DIR.parents[1]  # "gbm-aid mert" (backend/pipeline -> kok)
 
 _EXPERT_RATING_RELATIVE_PATH = Path("raw") / "veri" / (
     "LUMIERE-ExpertRating-v202211 database girecek.csv"
@@ -122,7 +122,7 @@ def _candidate_expert_rating_csv_paths() -> list[Path]:
     # 2) `X:` subst altinda: gercek yola geri coz.
     # lint-allow-resolve: yalniz CSV OKUMA yolu; bu modul goruntu YAZMAZ,
     # subst kokunun ustune (proje koku) cikmanin baska yolu yok.
-    candidates.append(Path(__file__).resolve().parents[2] / _EXPERT_RATING_RELATIVE_PATH)
+    candidates.append(Path(__file__).resolve().parents[3] / _EXPERT_RATING_RELATIVE_PATH)
     return candidates
 
 

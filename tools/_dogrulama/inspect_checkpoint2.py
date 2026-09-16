@@ -1,10 +1,20 @@
+
+# 2026-09-16: sabit kodlanmis mutlak yollar KALDIRILDI -- kullanici dizini
+# adi halka acik depoya siziyordu ve bu script baska makinede calismiyordu.
+# Yollar artik dosyanin kendi konumundan / ortam degiskeninden turetilir.
+import os as _os
+from pathlib import Path as _P
+_BURASI   = _P(__file__).resolve().parent          # tools/_dogrulama
+_KOK_KOD  = _P(__file__).resolve().parents[2]      # gbm-aid mert
+_KOK_PROJ = _P(__file__).resolve().parents[3]      # GBM-AID Prototip
+_VERI_KOKU = _P(_os.environ.get('GBMAID_VERI_KOKU', str(_KOK_PROJ)))
 import sys
-sys.path.insert(0, r"C:\Users\Barış\Desktop\GBM-AID Prototip\gbm-aid mert")
+sys.path.insert(0, str(_KOK_KOD))
 import tools.train_cox_week3 as m
 sys.modules['__main__'] = m  # pickle recorded classes under __main__
 
 import pandas as pd
-path = r"C:\Users\Barış\Desktop\GBM-AID Prototip\gbm-aid mert\artifacts\week3\cox_model\_checkpoints\arm_primary_wt93_icc60_th06.pkl"
+path = str(_KOK_KOD / r'artifacts\week3\cox_model\_checkpoints\arm_primary_wt93_icc60_th06.pkl')
 obj = pd.read_pickle(path)
 print("type:", type(obj))
 print("name:", obj.name)

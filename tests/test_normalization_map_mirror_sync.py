@@ -60,7 +60,10 @@ import pytest
 # ayni gerekce: bu dosya goruntu YAZMAZ, K12 ITK kisiti gecerli degil).
 REPO_ROOT = Path(__file__).resolve().parent.parent  # "gbm-aid mert"
 
-PREDICT_SOURCE_PATH = REPO_ROOT / "api" / "predict.py"
+# 2026-09-16: `api/` paketi `backend/` altina tasindi. Bu test kaynagi
+# IMPORT ETMEZ, dosyayi AST ile OKUR (ayna denetimi `api/`yi FastAPI/shap
+# bagimliligiyla birlikte cekmesin diye) -- bu yuzden yolu elle takip eder.
+PREDICT_SOURCE_PATH = REPO_ROOT / "backend" / "api" / "predict.py"
 INTEGRITY_SOURCE_PATH = REPO_ROOT / "tools" / "data_integrity_check.py"
 
 PREDICT_IDH1_MAP_NAME = "IDH1_LABEL_NORMALIZATION_MAP"

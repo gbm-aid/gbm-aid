@@ -97,6 +97,9 @@ TOOLS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = TOOLS_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+# 2026-09-16: api/ ve pipeline/ backend/ altina tasindi; import adlari
+# DEGISMEDI (`from pipeline.x import y`), yalnizca arama yoluna eklendi.
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
@@ -115,7 +118,7 @@ from pipeline.xgboost_model import (  # noqa: E402
 from db_connection import get_connection  # noqa: E402
 from psycopg2.extras import RealDictCursor  # noqa: E402
 
-MODELS_DIR = PROJECT_ROOT / "models"
+MODELS_DIR = PROJECT_ROOT / "backend" / "models"  # 2026-09-16: models/ backend/ altina tasindi
 ARTIFACT_DIR = (
     PROJECT_ROOT / "artifacts" / "week4" / "xgboost_v2a_mgmt_reduce_collinearity_0912"
 )

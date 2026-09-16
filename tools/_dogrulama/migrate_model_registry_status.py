@@ -10,10 +10,20 @@ sonra ROLLBACK yapilir -- DB'de HICBIR KALICI DEGISIKLIK OLMAZ.
 
 --apply verilirse: ayni adimlar calisir ama sonunda COMMIT edilir.
 """
+
+# 2026-09-16: sabit kodlanmis mutlak yollar KALDIRILDI -- kullanici dizini
+# adi halka acik depoya siziyordu ve bu script baska makinede calismiyordu.
+# Yollar artik dosyanin kendi konumundan / ortam degiskeninden turetilir.
+import os as _os
+from pathlib import Path as _P
+_BURASI   = _P(__file__).resolve().parent          # tools/_dogrulama
+_KOK_KOD  = _P(__file__).resolve().parents[2]      # gbm-aid mert
+_KOK_PROJ = _P(__file__).resolve().parents[3]      # GBM-AID Prototip
+_VERI_KOKU = _P(_os.environ.get('GBMAID_VERI_KOKU', str(_KOK_PROJ)))
 import sys
 import psycopg2
 
-ENV_PATH = r"C:\Users\Barış\Desktop\GBM-AID Prototip\.env"
+ENV_PATH = str(_KOK_PROJ / '.env')
 
 DDL_STATEMENTS = [
     "ALTER TABLE model_registry ADD COLUMN status TEXT NOT NULL DEFAULT 'shadow';",
