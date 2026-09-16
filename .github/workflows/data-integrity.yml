@@ -1,0 +1,63 @@
+name: Veri Butunlugu (K3 registry expiry dahil)
+
+# NOT (2026-09-12, db-agent): Codex/reviewer'in K3 sartli onayindaki HIGH
+# bulgusunun (`--strict-expiry` hicbir CI cagrisina bagli degil, fail-open
+# varsayilan) duzeltmesi. `tools/data_integrity_check.py` TAMAMEN
+# SALT-OKUNUR bir SELECT script'idir (bkz. kendi docstring'i) -- bu
+# workflow hicbir INSERT/UPDATE/ALTER/DELETE calistirmaz.
+#
+# Bu, `tests.yml`'e EKLENMEDI (ayri dosya olarak acildi) cunku:
+#   - tests.yml push/PR'da (fork'lar dahil) tetiklenir; DB credential'ini
+#     her PR'a acmak guvenlik riski olur (bkz. tests.yml'nin kendi
+#     yorumu: "kimlik bilgisi... CI'da gerekmiyor" cumlesi HALA GECERLI
+#     olsun istendi).
+#   - Bu kontrolun amaci GUNLUK/HAFTALIK bir alarmdir (review_by tarihi
+#     gectiginde insan gozden gecirmesi tetiklensin), her push'ta degil.
+#
+# Repo koku `gbm-aid mert/` (bkz. tests.yml basi) -- bu dosya da BURAYA
+# konuldu, proje kokundeki (`GBM-AID Prototip/`) `.env` DEGIL: DB
+# credential'lari GitHub repo Secrets'tan (Settings -> Secrets and
+# variables -> Actions) `env:` olarak enjekte edilir, HICBIR YERDE
+# koda/workflow dosyasina GOMULMEZ.
+
+"on":
+  schedule:
+    # Her gun 06:00 UTC -- review_by (2026-09-19) gunu ve sonrasinda
+    # varsayilan (strict olmayan) modun WARN'a, --strict-expiry'nin
+    # CRITICAL'e (exit code 1, is BASARISIZ) donmesini GUNLUK yakalar.
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+
+jobs:
+  data-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodu getir
+        uses: actions/checkout@v4
+
+      - name: Python 3.10 kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Bagimliliklari kur
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Veri butunlugu kontrolu (--strict-expiry)
+        env:
+          # GitHub repo Secrets'tan enjekte edilir -- degerler BURADA
+          # ASLA YAZILMAZ. tools/data_integrity_check.py::load_env()
+          # once bu env degiskenlerine bakar (2026-09-12 duzeltmesi),
+          # yerel .env dosyasina SADECE gelistirme ortaminda dusun.
+          SUPABASE_HOST: ${{ secrets.SUPABASE_HOST }}
+          SUPABASE_PORT: ${{ secrets.SUPABASE_PORT }}
+          SUPABASE_DB: ${{ secrets.SUPABASE_DB }}
+          SUPABASE_USER: ${{ secrets.SUPABASE_USER }}
+          SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
+        run: |
+          python tools/data_integrity_check.py --strict-expiry --verbose

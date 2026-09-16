@@ -1,0 +1,10 @@
+# GBM-AID Hafta 6 juri demosu — YALNIZ demo katmani bagimliligi.
+# Ana requirements.txt'e DOKUNULMADI: once onu kur (api/pipeline
+# bagimliliklari — psycopg2, lifelines, shap, faiss, sentence-transformers
+# vb. oradan gelir), sonra bunu kur:
+#   pip install -r requirements.txt -r requirements-demo.txt
+#
+# Not: streamlit==1.49.1 kurulumu `packaging` paketini 26.x'ten 25.0'a
+# indirebilir (streamlit'in ust siniri); 2026-09-11 kurulumunda gozlendi,
+# mevcut test takiminda kirilma yaratmadi.
+streamlit==1.49.1

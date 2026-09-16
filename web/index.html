@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GBM-AID · GLIOVISION</title>
+<!--
+  GBM-AID web arayüzü — Aşama 3-B: gerçek API'ye bağlandı (2026-09-16).
+  Aşama 2 (2026-09-15) iskeleti kurmuştu; bu sürümde her `// TODO(api)`
+  kancası canlı uç noktaya bağlandı.
+
+  🔴 2026-09-16 (Barış kararı) — ZORUNLU BEYAN METİNLERİ SİTEDEN KALDIRILDI.
+  Bu site bir VİTRİNDİR: amacı sistemin uçtan uca çalıştığını jüriye yalın ve
+  estetik biçimde göstermektir. Beyanlar, kararlar ve metodoloji detayları
+  final rapora, sunuma ve jüriye basılı olarak verilecek ekte yer alır —
+  ekranda tekrarlanmaz. Kaldırılan 16 render noktası ve "Sınırlar" sekmesi
+  için bkz. `log/2026-09-16.md`. API uçları `notes`/`role_note` alanlarını
+  DÖNDÜRMEYE DEVAM EDER; değişen yalnız bunların ÇİZİLMEMESİDİR.
+  ⚠️ `citation_grounding_violation` kapısı KALDIRILMADI — o bir beyan metni
+  değil, uydurma PMID'i ekranda göstermeyi engelleyen DAVRANIŞTIR.
+  Kaynak tasarım: `gliovision site/GBM-AID.dc.html` (SALT OKUNUR, Claude Design canvas).
+  Bu dosya saf HTML/CSS/vanilla JS'tir: React YOK, derleme adımı YOK, harici CDN YOK.
+  Klasik <script> etiketleri kullanılır (ES module DEĞİL) — böylece dosya
+  çift tıklanarak (file://) da, `python -m http.server` ile de açılır.
+-->
+<link rel="stylesheet" href="styles.css?v=2026-09-16d">
+</head>
+<body>
+
+<a class="skip-link" href="#view">İçeriğe atla</a>
+
+<!-- Kalıcı araştırma şeridi 2026-09-16'da KALDIRILDI (Barış kararı): site bir
+     vitrindir, beyan/metodoloji metinleri rapora ve sunuma aittir. -->
+
+<!-- ===== NAVBAR ===== -->
+<header class="navbar">
+  <div class="navbar__inner">
+    <a class="brand" href="#/" data-nav-home>
+      <span class="brand__name">GBM-AID</span>
+      <span class="brand__sub">GLIOVISION</span>
+    </a>
+
+    <nav class="nav-desktop" id="nav-desktop" aria-label="Ana gezinme"></nav>
+
+    <button class="nav-burger" id="nav-burger" type="button"
+            aria-label="Menüyü ac/kapat" aria-expanded="false" aria-controls="nav-mobile">&#9776;</button>
+  </div>
+  <nav class="nav-mobile" id="nav-mobile" aria-label="Ana gezinme (mobil)" hidden></nav>
+</header>
+
+<!-- ===== EKRANLARIN RENDER EDİLDİĞİ ALAN ===== -->
+<main id="view" class="view" tabindex="-1"></main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div>
+      <div class="footer__title">GBM-AID v1.0</div>
+      <div class="footer__text">Glioblastoma sağkalım tahmini karar destek prototipi. GLIOVISION araştırma grubu, 2026.</div>
+    </div>
+    <div>
+      <div class="footer__label">Veri Kaynakları</div>
+      <div class="footer__text footer__text--loose">UPenn-GBM · UCSF-PDGM · LUMIERE · TCGA-GBM</div>
+      <div class="footer__fine">Her veri setinin kendi lisans koşulları geçerlidir.</div>
+    </div>
+    <div>
+      <div class="footer__label">Sorumluluk Reddi</div>
+      <div class="footer__text">Bu sistem klinik karar destek araştırma prototipidir. Nihai karar yetkisi lisanslı sağlık profesyoneline aittir.</div>
+    </div>
+  </div>
+</footer>
+
+<!-- ===== ASİSTAN (chatbot) — YALNIZ HAZIR SEÇENEKLER, SERBEST METİN YOK ===== -->
+<button class="chat-launcher" id="chat-launcher" type="button"
+        aria-label="Asistanı ac" aria-expanded="false" aria-controls="chat-panel">&#128172;</button>
+
+<section class="chat-panel" id="chat-panel" role="dialog" aria-label="GBM-AID Asistan" hidden>
+  <div class="chat-panel__head">
+    <span>GBM-AID Asistan</span>
+    <button class="chat-panel__close" id="chat-close" type="button" aria-label="Asistanı kapat">&#10005;</button>
+  </div>
+  <div class="chat-panel__body" id="chat-body" aria-live="polite"></div>
+  <!-- "Serbest metin kutusu bilinçli olarak YOKTUR (prompt enjeksiyon yüzeyi)"
+       notu 2026-09-16'da kaldırıldı (Barış kararı) — sunumda sözlü anlatılacak. -->
+
+</section>
+
+<!-- Klasik script'ler — yükleme sırası önemlidir. -->
+<script src="app/util.js?v=2026-09-16d"></script>
+<script src="app/declarations.js?v=2026-09-16d"></script>
+<script src="app/api.js?v=2026-09-16d"></script>
+<script src="app/state.js?v=2026-09-16d"></script>
+<script src="app/charts.js?v=2026-09-16d"></script>
+<script src="app/views.js?v=2026-09-16d"></script>
+<script src="app/chat.js?v=2026-09-16d"></script>
+<script src="app.js?v=2026-09-16d"></script>
+</body>
+</html>

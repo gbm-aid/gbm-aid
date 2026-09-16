@@ -1,0 +1,14 @@
+# GBM-AID Hafta 6 demo — koyu tema (dataviz referans paleti yuzeyleri).
+# Bu dosya YALNIZ `cd demo && streamlit run streamlit_app.py` ile
+# baslatildiginda otomatik okunur; depo kokunden baslatiliyorsan
+# `--theme.base dark` bayragini ver (bkz. demo/README.md).
+
+[theme]
+base = "dark"
+backgroundColor = "#1a1a19"
+secondaryBackgroundColor = "#232322"
+textColor = "#ffffff"
+primaryColor = "#3987e5"
+
+[server]
+headless = true

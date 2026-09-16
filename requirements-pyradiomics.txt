@@ -1,0 +1,45 @@
+# PyRadiomics çıkarım ortamı — AYRI, izole Python 3.10 sanal ortamı
+# (`.venv310_pyradiomics`), proje ana ortamına (README.md: Python 3.10.18,
+# `requirements.txt`/`requirements-dev.txt`) KASITLI OLARAK dahil EDİLMEZ.
+#
+# Neden ayrı dosya (ana requirements.txt'e EKLENMEDİ):
+# - pyradiomics'in Windows'ta derlenmesi ayrı MSVC Build Tools kurulumu
+#   gerektiriyor (bkz. tools/run_pyradiomics_tcga.py docstring'i) — ana
+#   backend/API ortamına zorunlu bağımlılık olarak eklemek o ortamın
+#   kurulumunu kırma riski taşır.
+# - Bu paketler SADECE `tools/run_pyradiomics_*.py`,
+#   `tools/probe_perturbation_stability.py`,
+#   `tools/validate_raw_vs_harmonized_sample.py`,
+#   `tools/validate_zscore_distribution.py` gibi Hafta 2/3 imaging-agent
+#   script'leri tarafından kullanılır — API/backend/Cox/ComBat kodu bu
+#   pakete hiç dokunmaz (grep ile doğrulanabilir: `import radiomics`
+#   yalnızca `tools/` altındaki script'lerde).
+#
+# KARAR BAĞLAMI (2026-08-13, decisions/2026-08-13-pyradiomics-c32-bincount-
+# karari.md "Sessiz varsayılan / sürüm pinleme" bölümü): boş
+# `RadiomicsFeatureExtractor()` çağrısında `binWidth` extractor'ın
+# `settings` sözlüğünde HİÇ GÖRÜNMÜYOR (özellik sınıfının içine gömülü
+# `kwargs.get('binWidth', 25)` varsayılanı) — yani PyRadiomics sürümü
+# değişirse bu varsayılan SESSİZCE değişebilir ve hiçbir log/settings
+# çıktısı bunu göstermez. Bu yüzden (a) HER extractor çağrısında TÜM
+# parametreler (binCount/binWidth, normalize, imageTypes) AÇIKÇA
+# `tools/run_pyradiomics_*.py` içinde set edilir (kod-seviyesi önlem) VE
+# (b) bu dosyayla PyRadiomics'in KENDİ sürümü de pinlenir (ortam-seviyesi
+# önlem) — ikisi birbirini tamamlar, biri diğerinin yerini tutmaz.
+#
+# Kurulum (Windows, Python 3.10, .venv310_pyradiomics içinde):
+#   python -m venv .venv310_pyradiomics
+#   .venv310_pyradiomics\Scripts\activate
+#   python -m pip install -r requirements-pyradiomics.txt
+#
+# Bu ortam requirements.txt/requirements-dev.txt'i İÇERMEZ (DB/API
+# bağımlılıkları burada gerekmiyor, script'ler `db_connection.py`/
+# `psycopg2` için ayrıca bu ortamda kurulu olmalı — mevcut
+# `.venv310_pyradiomics` bunu zaten içeriyor, bu dosya SADECE
+# pyradiomics'in kendi bağımlılık zincirini pinliyor).
+pyradiomics==3.0.1
+SimpleITK==2.3.1
+numpy==1.26.4
+PyWavelets==1.8.0
+pykwalify==1.8.0
+six==1.17.0

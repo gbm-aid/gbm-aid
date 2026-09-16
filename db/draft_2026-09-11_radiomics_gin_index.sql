@@ -1,0 +1,85 @@
+-- =============================================================================
+-- TASLAK — UYGULANMADI. Barış onayı ZORUNLU. Hiçbir CREATE INDEX burada
+-- çalıştırılmamıştır.
+--
+-- Kaynak görev: raw/plan/plan.txt:441 "Barış (Feature Store + FAISS) —
+-- radiomics tablosunu JSONB yapısıyla doldur; GIN index ekle" (Hafta 3
+-- görevi, JSONB doldurma kısmı fiilen yapıldı — C32 çıkarımıyla
+-- `shape_features`/`first_order_features`/`texture_features` dolu geliyor
+-- — ama GIN index HİÇ eklenmedi).
+--
+-- CANLI ÖLÇÜM (2026-09-11, readonly SELECT, db-agent):
+--   select count(*) from radiomics;                                    -> 33202 satır
+--   select pg_size_pretty(pg_total_relation_size('radiomics')),
+--          pg_total_relation_size('radiomics');                        -> '103 MB' / 108298240 byte
+--   Mevcut indeksler:
+--     radiomics_pkey (btree, radiomics_id)
+--     radiomics_scan_id_segmentation_tool_tumor_region_key
+--       (btree UNIQUE, scan_id+segmentation_tool+tumor_region)
+--   GIN indeks HİÇ YOK.
+--
+-- DÜRÜST DEĞERLENDİRME — kodun GERÇEKTEN GIN'den yararlanıp yararlanmadığı:
+-- `gbm-aid mert/` altında `shape_features`/`first_order_features`/
+-- `texture_features` kolonlarının SQL içinde geçtiği TEK yer:
+--   pipeline/growth_simulation.py:252-253
+--     r.shape_features -> 'original_shape_Sphericity' AS sphericity,
+--     r.texture_features -> 'original_glcm_JointEntropy' AS glcm_joint_entropy
+-- Bu kullanım SELECT projeksiyonunda (`->` tek anahtar çıkarma) — sorgunun
+-- WHERE koşulu `r.segmentation_tool = %s AND r.tumor_region = %s AND
+-- m.patient_id ILIKE 'Patient-%%'` (JSONB kolonlara HİÇ dokunmuyor).
+-- GIN index (ve genel olarak her JSONB index türü) WHERE/JOIN
+-- PREDIKATLARINI hızlandırır (`@>` içerme, `?`/`?|`/`?&` anahtar varlığı,
+-- `jsonb_path_ops` ile containment); SELECT listesindeki `->` projeksiyonuna
+-- HİÇBİR fayda sağlamaz — Postgres bu ifadeyi her satır için normal şekilde
+-- hesaplar, index kullanılmaz.
+--
+-- Başka hiçbir dosyada `shape_features`/`first_order_features`/
+-- `texture_features` üzerinde WHERE/JOIN/containment operatörü (`@>`, `?`,
+-- `?|`, `?&`, `->`/`->>` bir WHERE koşulunda) BULUNAMADI (grep taraması,
+-- 2026-09-11). Yani şu anki koda göre GIN index'in FİİLİ FAYDASI SIFIRA
+-- YAKIN — 33.202 satır zaten küçük bir tablo (103 MB), tam tablo taraması
+-- bu ölçekte pratikte ucuz, ve mevcut sorgu deseni zaten `segmentation_tool`/
+-- `tumor_region`/`scan_id` üzerinden filtreleniyor (bunlar zaten UNIQUE
+-- btree index'in parçası).
+--
+-- SONUÇ (dürüst): bu bir PLAN GÖREVİ ama şu an ERTELENEBİLİR — kod
+-- tabanında GIN'i tetikleyecek bir JSONB-predicate sorgu deseni YOK.
+-- Gelecekte gerçek fayda doğacağı senaryo: FAISS/feature-store'un JSONB
+-- içeriğine göre doğrudan filtreleme yapması (ör. "belirli bir texture
+-- özelliği eşik üstü olan taramaları getir" gibi bir sorgu — şu an
+-- HİÇBİR yerde yok, FAISS vektörleri Python tarafında DataFrame'den
+-- inşa ediliyor, SQL WHERE ile JSONB içeriği filtrelenmiyor).
+--
+-- ÖNERİ: Barış onayı olmadan UYGULANMAZ. Onaylanırsa bile `CONCURRENTLY`
+-- kullanılmalı (aşağıda) — 33K satırlık küçük tabloda kilit riski düşük
+-- ama üretimde okuma kesintisi istenmiyorsa yine de doğru pratik.
+-- =============================================================================
+
+-- --- SEÇENEK A (önerilmez, şu an fayda yok) — tek GIN, varsayılan operator
+--     class (jsonb_ops, hem @> hem ? destekler, jsonb_path_ops'tan büyük) --
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_radiomics_shape_features_gin
+--     ON radiomics USING GIN (shape_features);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_radiomics_first_order_features_gin
+--     ON radiomics USING GIN (first_order_features);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_radiomics_texture_features_gin
+--     ON radiomics USING GIN (texture_features);
+
+-- --- SEÇENEK B (daha küçük/ucuz, yalnız containment `@>` için, jsonb_path_ops) --
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_radiomics_shape_features_ginpath
+--     ON radiomics USING GIN (shape_features jsonb_path_ops);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_radiomics_first_order_features_ginpath
+--     ON radiomics USING GIN (first_order_features jsonb_path_ops);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_radiomics_texture_features_ginpath
+--     ON radiomics USING GIN (texture_features jsonb_path_ops);
+
+-- --- BOYUT/FAYDA NOTU: GIN indeksleri JSONB'de genelde taban veri
+--     boyutuyla KIYASLANABİLİR veya daha büyük olur (her anahtar/değer
+--     için ters-indeks girdisi). 103 MB'lık tabloda 3 GIN indeksi
+--     muhtemelen +50-150 MB ek disk (kaba tahmin, gerçek ölçüm CREATE
+--     INDEX sonrası `pg_total_relation_size` ile yapılmalı) — fayda
+--     SIFIRA yakınken bu bedelsiz değil.
+
+-- --- ROLLBACK (uygulanırsa) --------------------------------------------
+-- DROP INDEX CONCURRENTLY IF EXISTS ix_radiomics_shape_features_gin;
+-- DROP INDEX CONCURRENTLY IF EXISTS ix_radiomics_first_order_features_gin;
+-- DROP INDEX CONCURRENTLY IF EXISTS ix_radiomics_texture_features_gin;

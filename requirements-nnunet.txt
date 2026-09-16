@@ -1,0 +1,5 @@
+# PyTorch GPU wheel must be installed first with the hardware-specific command
+# documented in docs/nnunet_new_patient_demo.md.
+torch==2.6.0
+torchvision==0.21.0
+nnunetv2==2.8.1
