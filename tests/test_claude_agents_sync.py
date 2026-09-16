@@ -121,7 +121,27 @@ def _find_project_root() -> Path:
     )
 
 
-_PROJECT_ROOT = _find_project_root()
+# 🔴 2026-09-16 (ilk CI kosusunun yakaladigi gercek sinir): bu test
+# `CLAUDE.md` ile `AGENTS.md`'nin birebir ayni kalmasini denetler. O iki dosya
+# ve arananan capalar (`decisions/`, `log/`, `takim/`) **KOD DEPOSUNUN DISINDA**,
+# proje kokunde durur -- depo `gbm-aid mert/`'tir. Dolayisiyla CI runner'i
+# yalniz depoyu checkout ettiginde bu denetim YAPILAMAZ ve modul seviyesinde
+# `RuntimeError` firlatarak TUM TOPLAMAYI durduruyordu (2 collection error).
+#
+# Cozum SESSIZ ATLAMA DEGILDIR: pytest'in kendi skip mekanizmasi kullanilir,
+# gerekce raporda GORUNUR ve testin iddiasi (senkron kurali) CURUTULMUS SAYILMAZ
+# -- yalnizca bu ortamda calistirilamaz. Yerelde capalar bulundugu icin test
+# AYNEN kosmaya devam eder.
+try:
+    _PROJECT_ROOT = _find_project_root()
+except RuntimeError as _exc:  # pragma: no cover -- yalniz CI/checkout ortami
+    pytest.skip(
+        "CLAUDE.md/AGENTS.md senkron denetimi bu ortamda YAPILAMAZ: wiki capalari "
+        "(decisions/, log/, takim/) kod deposunun DISINDA, proje kokunde durur ve "
+        f"CI checkout'unda bulunmazlar. Ayrinti: {_exc}",
+        allow_module_level=True,
+    )
+
 _TOOLS_DIR = Path(__file__).absolute().parent.parent / "tools"
 
 if str(_TOOLS_DIR) not in sys.path:

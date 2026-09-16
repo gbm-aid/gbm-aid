@@ -1,2 +1,9 @@
 -r requirements.txt
 pytest==8.2.2
+
+# 2026-09-16: CI'da KESFEDILDI -- `fastapi.testclient.TestClient`
+# `starlette.testclient`'i, o da `httpx2`yi ISTER. Yerelde kuruluydu ama
+# HICBIR requirements dosyasinda BEYAN EDILMEMISTI; bu yuzden testler
+# yerelde gecip CI'da TOPLANMA hatasi veriyordu (ilk CI kosusunun
+# yakaladigi gercek bir eksiklik).
+httpx2==2.12.0

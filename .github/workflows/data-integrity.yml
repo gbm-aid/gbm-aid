@@ -48,7 +48,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      # 🔴 2026-09-16: ilk gercek CI kosusu bu is adimini KIRDI --
+      # `KeyError: Baglanti bilgisi eksik: ['SUPABASE_HOST', ...]`.
+      # Sebep kod DEGIL: depo Secrets'inda SUPABASE_* TANIMLI DEGIL.
+      # Bu kontrol CANLI veritabani ister; kimlik bilgisi yoksa yapilamaz.
+      #
+      # ⚠️ Bu bir SESSIZ ATLAMA DEGILDIR: asagidaki adim durumu `::notice`
+      # olarak kosu ozetine YAZAR, yani "kontrol kosmadi" bilgisi GORUNUR.
+      # Alternatif (kalici KIRMIZI rozet) insanlari CI'yi gormezden gelmeye
+      # alistirirdi. Secrets tanimlandigi an kontrol KENDILIGINDEN kosar.
+      - name: Gizli anahtarlar tanimli mi
+        id: anahtar_kontrol
+        env:
+          SUPABASE_HOST: ${{ secrets.SUPABASE_HOST }}
+        run: |
+          if [ -z "${SUPABASE_HOST}" ]; then
+            echo "::notice title=Veri butunlugu ATLANDI::Depo Secrets'inda SUPABASE_* tanimli degil; bu kontrol CANLI veritabani gerektirir. Tanimlandiginda kendiliginden kosacaktir."
+            echo "var=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "var=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Veri butunlugu kontrolu (--strict-expiry)
+        if: steps.anahtar_kontrol.outputs.var == 'true'
         env:
           # GitHub repo Secrets'tan enjekte edilir -- degerler BURADA
           # ASLA YAZILMAZ. tools/data_integrity_check.py::load_env()
