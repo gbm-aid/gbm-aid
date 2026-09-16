@@ -1,0 +1,68 @@
+# =============================================================================
+# GBM-AID -- Caddy ters vekil yapilandirmasi
+# =============================================================================
+# Kurulum:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo nano /etc/caddy/Caddyfile        # <ALAN-ADI> satirini doldur
+#   sudo systemctl reload caddy
+#
+# 🔴 HTTPS OTOMATIKTIR: alan adi DNS'te bu sunucunun IP'sine baktigi anda
+#    Caddy Let's Encrypt sertifikasini KENDILIGINDEN alir ve yeniler.
+#    Alan adi YOKSA asagidaki ":80" blogunu kullan (sertifika alinamaz,
+#    baglanti sifresiz HTTP olur -- yalniz gecici deneme icin).
+# =============================================================================
+
+<ALAN-ADI> {
+	# --- uygulama --------------------------------------------------------
+	reverse_proxy 127.0.0.1:8000 {
+		# Tam zincir (predict + FAISS + buyume + PubMed + LLM) olculdu:
+		# soguk 19-540 sn, sicak 32-86 sn. Varsayilan 30 sn'lik bir zaman
+		# asimi bu istekleri KESERDI.
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+			dial_timeout 10s
+		}
+
+		# 🔴 SITE SIFRESIZDIR (Barış karari, 2026-09-16). Kapatmak istersen:
+		#   1) `.env`'e GBMAID_API_KEY yaz,
+		#   2) asagidaki satirin yorumunu kaldir.
+		# Anahtar boylece tarayiciya GOMULMEZ, yalniz vekil ekler.
+		# header_up X-API-Key "{$GBMAID_API_KEY}"
+	}
+
+	# --- gunlukler -------------------------------------------------------
+	log {
+		output file /var/log/caddy/gbmaid.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+		format json
+	}
+
+	encode gzip
+
+	# --- guvenlik basliklari --------------------------------------------
+	header {
+		# Arayuz kendi kokunden servis edilir; disariya istek atmaz.
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}
+
+# =============================================================================
+# ALAN ADI HENUZ YOKKEN (gecici): yukaridaki blogu yorumla, bunu kullan.
+# ⚠️ Bu blokta HTTPS YOKTUR -- yalniz IP ile deneme icindir, juriye
+#    verilecek adres DEGILDIR.
+# =============================================================================
+# :80 {
+# 	reverse_proxy 127.0.0.1:8000 {
+# 		transport http {
+# 			read_timeout 300s
+# 			write_timeout 300s
+# 		}
+# 	}
+# 	encode gzip
+# }

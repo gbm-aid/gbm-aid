@@ -1,0 +1,65 @@
+# =============================================================================
+# GBM-AID -- systemd birim dosyasi
+# =============================================================================
+# Kurulum:
+#   sudo cp deploy/gbmaid.service /etc/systemd/system/gbmaid.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gbmaid
+#
+# Izleme:
+#   systemctl status gbmaid
+#   journalctl -u gbmaid -f          # canli gunluk
+#
+# 🔴 NEDEN `tools/run_site.py` (dogrudan uvicorn DEGIL):
+#   O script iki ortam icin yazildi -- Windows'ta FAISS icin 8.3 kisa yolu
+#   kurar, Linux'ta HICBIR SEY YAPMAZ (no-op). Ayrica `--warmup` ile acilista
+#   bir `/predict` cagirip soguk baslangici ILK KULLANICIDAN gizler ve TEK
+#   ISCI zorlar (SHAP arka plan onbellegi surec-icidir; coklu isci hem bellegi
+#   hem soguk baslangici carpar -- 2026-09-16 olcumu).
+# =============================================================================
+
+[Unit]
+Description=GBM-AID API + arayuz (FastAPI/uvicorn)
+Documentation=https://github.com/gbm-aid/gbm-aid
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gbmaid
+Group=gbmaid
+WorkingDirectory=/opt/gbmaid
+
+# `.env` uygulamanin KENDISI tarafindan okunur (db_connection.load_project_
+# environment()). Burada ayrica EnvironmentFile GEREKMEZ; yine de systemd'nin
+# de gormesi istenirse asagidaki satirin yorumu kaldirilabilir:
+# EnvironmentFile=/opt/gbmaid/.env
+
+# `backend/` arama yoluna eklenir -- `api/` ve `pipeline/` oranin altindadir,
+# import ADLARI degismedi (`from pipeline.x import y`).
+Environment=PYTHONPATH=/opt/gbmaid/backend
+Environment=PYTHONUNBUFFERED=1
+
+# 127.0.0.1'e baglanir: disariya YALNIZ Caddy uzerinden acilir.
+ExecStart=/opt/gbmaid/.venv/bin/python /opt/gbmaid/tools/run_site.py \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --warmup UCSF-PDGM-167 \
+    --log-level info
+
+Restart=always
+RestartSec=10
+# Soguk baslangic 19-540 sn arasinda olculdu; isitma cagrisi bitmeden
+# systemd'nin "basarisiz" saymamasi icin genis bir pencere.
+TimeoutStartSec=900
+
+# --- guvenlik siki-sikilastirmasi (Ubuntu varsayilanlariyla uyumlu) ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+# MR dosyalari ve depo disinda hicbir yere yazmasi gerekmez.
+ReadWritePaths=/opt/gbmaid /srv/gbmaid
+
+[Install]
+WantedBy=multi-user.target
