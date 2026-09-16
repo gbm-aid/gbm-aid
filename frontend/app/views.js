@@ -434,12 +434,12 @@
 
   function riskCard(s) {
     var st = riskStream(s);
-    var arm = (st.block && st.block.model_arm) || '';
+    /* 🔴 2026-09-16 (Barış kararı): model kolu rozeti ("v3b_lowvar_v2amgmt")
+       kaldirildi -- ic varyant adi, juri icin anlamsiz bir tanimlayici. */
     return '' +
     '<div class="card">' +
       '<div class="card__head">' +
         '<div class="h2" style="margin:0;">Risk Skoru</div>' +
-        '<div class="badge badge--neutral">' + esc(arm || 'model kolu bekleniyor') + '</div>' +
       '</div>' +
       blockBody({
         status: st.status, block: st.block, reason: st.reason, skelLines: 6,
@@ -670,7 +670,7 @@
           /* `scan_id` 2026-09-16'da kaldırıldı — ham veritabanı kimliği. */
           'Kaynak: ' + esc(U.orDash(meta.source)) +
           ' · en geniş tümör kesiti: ' + esc(U.orDash(meta.bestSlice)) +
-          ' · maske: ' + esc(U.orDash(meta.maskSource)) +
+          /* `maske: ucsf_native` gibi ic arac adlari 2026-09-16'da kaldirildi. */
           ' · bindirme uygulandı: ' + esc(U.orDash(meta.overlay)) +
           (meta.lumiereTp ? ' · LUMIERE zaman noktası: ' + esc(meta.lumiereTp) : '') +
         '</div>';
@@ -797,20 +797,18 @@
           return '' +
           '<div class="big__k">12 Aylık Sağkalım Sınıflandırıcı Çıktısı</div>' +
           '<div class="big__v big__v--accent" style="margin-bottom:6px;">' + esc(pctText) + '</div>' +
-          '<div class="fine" style="margin-bottom:14px;">Kalibrasyonu ÖLÇÜLMEMİŞ bir sınıflandırıcı çıktısıdır; ' +
-            'klinik bir olasılık gibi okunmamalıdır.</div>' +
-          (b.direction_note ? '<div class="note-box" style="margin-bottom:8px;">' + esc(b.direction_note) + '</div>' : '') +
-          (b.target_definition_note ? '<div class="note-box" style="margin-bottom:8px;">' + esc(b.target_definition_note) + '</div>' : '') +
-          (b.status_note ? '<div class="note-box" style="margin-bottom:8px;">' + esc(b.status_note) + '</div>' : '') +
-          '<div class="fine">Model statüsü: ' + esc(U.orDash(b.status)) +
-            ' · birincil karar modeli: ' + (b.is_primary_decision_model ? 'EVET' : 'HAYIR') +
-            ' · kol: ' + esc(U.orDash(b.model_arm)) +
-            ' · 12-ay eşiği: ' + esc(U.orDash(b.twelve_month_threshold_days)) + ' gün</div>' +
-          (b.cox_score_input
-            ? '<div class="fine">Girdi Cox skoru (<code>' + esc(U.orDash(b.cox_score_input.score_column)) + '</code>): ' +
-              esc(U.signed(b.cox_score_input.value, 4)) + '</div>'
-            : '') +
-          hookTag(st.hook);
+          /* 🔴 2026-09-16 (Barış kararı): XGBoost blogundaki TUM teknik metinler
+             kaldirildi -- API'den gelen `direction_note` / `target_definition_note`
+             (icinde `pipeline/xgboost_model.py::define_twelve_month_survival_target`
+             gibi dosya:fonksiyon atiflari vardi) / `status_note`, ayrica
+             "Model statusu · birincil karar modeli · kol · 12-ay esigi" satiri,
+             "Girdi Cox skoru (score_column)" satiri ve kalibrasyon uyarisi.
+             ⚠️ API bu alanlari DONDURMEYE DEVAM EDER; degisen yalniz cizilmemesidir.
+             📌 Bu blok ilk temizlik turunda GOZDEN KACTI cunku yalniz `/predict`
+             GERCEK veri dondurdugunde calisiyor; gelistirme makinesinde Smart App
+             Control `/predict`i kirdigi icin 67 render senaryosunun HICBIRINDE bu
+             kod yolu yurumemisti. Canli sunucuda gercek yanitla yakalandi. */
+          '';
         }
       }) +
     '</div>';
