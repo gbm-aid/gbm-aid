@@ -45,6 +45,7 @@ ExecStart=/opt/gbmaid/.venv/bin/python /opt/gbmaid/tools/run_site.py \
     --host 127.0.0.1 \
     --port 8000 \
     --warmup UCSF-PDGM-167 \
+    --warmup-growth Patient-028 \
     --log-level info
 
 Restart=always

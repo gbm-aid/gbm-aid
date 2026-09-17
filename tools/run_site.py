@@ -103,8 +103,26 @@ def faiss_yollarini_hazirla() -> dict:
 # ---------------------------------------------------------------------------
 # Isitma
 # ---------------------------------------------------------------------------
-def _isit(taban: str, hasta: str, zaman_asimi: int) -> None:
-    """Sunucu acilinca bir kez `/predict` cagirir -- ilk kullanici beklemesin."""
+def _isit(
+    taban: str,
+    hasta: str,
+    zaman_asimi: int,
+    buyume_hasta: str | None = None,
+) -> None:
+    """Sunucu acilinca isitma cagrilarini yapar -- ilk kullanici beklemesin.
+
+    Iki ayri onbellek isitilir:
+      1. `/predict/<hasta>`        -> SHAP arka plani (surec-ici)
+      2. `/analyze_patient` (LUMIERE hastasi) -> buyume simulasyonu KOHORT
+         onbellegi (2026-09-17). Bu ikincisi olmadan ilk LUMIERE ziyaretcisi
+         ~55 sn bekler; canli sunucuda olculen degerler 58,7 / 70,9 / 64,5 sn
+         idi (LUMIERE disi ayni cagri 4,8-8,1 sn).
+
+    ⚠️ 2. cagri LLM'e de gider (literatur ozeti) -- yani her servis
+    yeniden baslatmasinda BIR adet OpenAI cagrisi maliyeti vardir
+    (~1.700 girdi / ~400 cikti token). Istenmezse `--warmup-growth`
+    verilmez; o zaman ilk LUMIERE ziyaretcisi bekler.
+    """
     for _ in range(90):
         time.sleep(2)
         try:
@@ -130,6 +148,26 @@ def _isit(taban: str, hasta: str, zaman_asimi: int) -> None:
         print("[isitma] BASARISIZ (%s: %s) -- sunucu yine de calisiyor, "
               "ilk kullanici bekleyecek." % (type(exc).__name__, str(exc)[:120]), flush=True)
 
+    if not buyume_hasta:
+        return
+
+    print("[isitma] %s icin BUYUME kohort onbellegi dolduruluyor..." % buyume_hasta,
+          flush=True)
+    t0 = time.time()
+    try:
+        govde = json.dumps({"patient_id": buyume_hasta}).encode("utf-8")
+        req = urllib.request.Request(
+            taban + "/analyze_patient", data=govde,
+            headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=zaman_asimi) as r:
+            r.read()
+        print("[isitma] BUYUME TAMAM -- %.1f sn. LUMIERE hastalari artik hizli."
+              % (time.time() - t0), flush=True)
+    except Exception as exc:
+        print("[isitma] BUYUME BASARISIZ (%s: %s) -- sunucu yine de calisiyor, "
+              "ilk LUMIERE ziyaretcisi bekleyecek."
+              % (type(exc).__name__, str(exc)[:120]), flush=True)
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="GBM-AID site sunucusu")
@@ -137,6 +175,10 @@ def main() -> int:
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--warmup", metavar="HASTA_ID", default=None,
                     help="sunucu acilinca bu hasta ile bir kez /predict cagir")
+    ap.add_argument("--warmup-growth", metavar="LUMIERE_HASTA_ID", default=None,
+                    help="sunucu acilinca bu LUMIERE hastasi ile bir kez "
+                         "/analyze_patient cagir (buyume kohort onbellegini "
+                         "doldurur; DIKKAT: LLM cagrisi da yapar)")
     ap.add_argument("--warmup-timeout", type=int, default=900)
     ap.add_argument("--log-level", default="info")
     args = ap.parse_args()
@@ -156,7 +198,8 @@ def main() -> int:
     if args.warmup:
         threading.Thread(
             target=_isit,
-            args=("http://127.0.0.1:%d" % args.port, args.warmup, args.warmup_timeout),
+            args=("http://127.0.0.1:%d" % args.port, args.warmup,
+                  args.warmup_timeout, args.warmup_growth),
             daemon=True,
         ).start()
 

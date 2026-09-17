@@ -87,6 +87,12 @@ BU DOSYA HICBIR PIPELINE FONKSIYONUNU YENIDEN YAZMAZ -- SADECE zincirler:
      rano_group/project_volume_range) DOGRUDAN cagirir -- o modulun
      mantigi BURADA TEKRAR YAZILMADI, sadece zincirlendi.
 
+     2026-09-17 EKLEME (Baris onayi) -- KOHORT GENELI ONBELLEK: yukaridaki
+     "GERCEK ZAMANLI hesap" karari GECERLI KALIR (CSV'den okuma YOK, hesap
+     hala canli DB'den yapilir); degisen tek sey, hastadan BAGIMSIZ olan
+     adimlarin surec omru boyunca BIR KEZ hesaplanmasidir. Gerekce ve
+     olculen sayilar icin bkz. `_GrowthCohortBundle` uzerindeki blok.
+
      TASARIM KARARI (Secenek A -- GERCEK ZAMANLI hesap, Secenek B'nin
      "artifacts/week4/growth_simulation_v3/ CSV'lerini oku" YERINE):
      canli olcum (2026-09-13) CSV'lerle BIREBIR AYNI sonucu uretiyor
@@ -172,6 +178,9 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import os
+import threading
+import time
 from typing import Any
 
 import psycopg2
@@ -560,16 +569,104 @@ def _build_literature_block(patient_id: str) -> dict[str, Any]:
     return dataclasses.asdict(result)
 
 
-def _build_growth_simulation_block(patient_id: str) -> dict[str, Any]:
-    """Buyume simulasyonu katmani -- OPSIYONEL/zenginlestirme, GERCEK
-    ZAMANLI hesaplanir (bkz. modul dokstring'i madde 4 "TASARIM KARARI").
+# ---------------------------------------------------------------------------
+# BUYUME SIMULASYONU -- KOHORT GENELI ONBELLEK (2026-09-17, Baris onayi)
+#
+# OLCULEN SORUN (canli sunucu https://gbm-aid.tech, 2026-09-17): bu blok HER
+# istekte TUM LUMIERE kohortunun buyume egrilerini sifirdan fit ediyordu.
+# Ucdan uca olcum (`POST /analyze_patient`):
+#     LUMIERE hastasi    (buyume VAR) -> 58,7 / 70,9 / 64,5 sn
+#     LUMIERE disi hasta (buyume YOK) ->  4,8 /  8,1 sn
+# Fark tamamen bu bloktandir. IKINCI cagri da yavas kaldi (70,9 sn) -- yani
+# "demo oncesi bir kez cagirip isitalim" yaklasimi YAPISAL OLARAK
+# calismiyordu, cunku isinacak bir sey yoktu.
+#
+# COZUM: PAHALI ve hastadan BAGIMSIZ adimlar -- iki DB okumasi ve TUM
+# kohortun egri fit'i -- surec-ici olarak BIR KEZ hesaplanir. RANO grup
+# turevleri (`assign_patient_rano_group` / `growth_fits_to_dataframe` /
+# `growth_rate_by_rano_group`) ve hastaya ozel adimlar (secim/filtre/
+# projeksiyon) ESKISI GIBI her istekte calisir: ucuzdurlar ve cagri
+# SIRALARI davranisin parcasidir (bkz. `_build_growth_cohort_bundle()`
+# icindeki not).
+#
+# BU BIR ONBELLEKTIR -- BAYATLAMA BILINCLI OLARAK KABUL EDILMISTIR:
+#   * DB'deki LUMIERE hacim/RANO verisi degisirse, servis YENIDEN BASLATILANA
+#     kadar site ESKI degeri gosterir. Gecerlilik siniri: `systemctl restart
+#     gbmaid` (dagitimda her `git pull` sonrasi zaten yapiliyor).
+#   * VARSAYILAN TTL YOKTUR (surec omru). Gerekce: bir TTL, juri demosunun
+#     ORTASINDA 55 saniyelik yeniden-hesaba dusme riski yaratirdi. Gerekirse
+#     `GBMAID_GROWTH_CACHE_TTL_SECONDS` ile acilir.
+#   * `GBMAID_GROWTH_CACHE_DISABLED=1` onbellegi tamamen kapatir (onceki
+#     davranis -- testler ve hata ayiklama icin).
+#   * HATA SONUCLARI ONBELLEGE ALINMAZ: gecici bir DB kesintisi kalici bir
+#     "kullanilamaz" durumuna DONUSMEZ.
+#
+# SAYISAL ETKI YOKTUR: ayni veriden ayni deterministik fit ciktigi icin
+# dondurulen projeksiyon birebir aynidir. Dogrulama olcutu (`Patient-028`,
+# 2026-09-17 canli olcumu): pct_median 43,96803524004096 ve v_median
+# 162073,4553518285 DEGISMEMELIDIR.
+# ---------------------------------------------------------------------------
 
-    `pipeline/growth_simulation.py`'nin fonksiyonlarini DOGRUDAN cagirir,
-    hicbirini yeniden yazmaz. Her basarisizlik/uygunsuzluk durumu ACIKCA
-    `not_available_reason` ile doner -- sessiz bos sonuc veya uydurma
-    projeksiyon YOK.
+
+@dataclasses.dataclass(frozen=True)
+class _GrowthCohortBundle:
+    """Kohort geneli (hastadan BAGIMSIZ) buyume simulasyonu turevleri."""
+
+    series_df: Any
+    rano_df: Any
+    fits: Any
+    built_at_monotonic: float
+
+
+_GROWTH_COHORT_LOCK = threading.Lock()
+_GROWTH_COHORT_CACHE: _GrowthCohortBundle | None = None
+
+_GROWTH_CACHE_TRUTHY = {"1", "true", "yes", "on", "evet"}
+
+
+def _growth_cache_disabled() -> bool:
+    raw = os.environ.get("GBMAID_GROWTH_CACHE_DISABLED") or ""
+    return raw.strip().lower() in _GROWTH_CACHE_TRUTHY
+
+
+def _growth_cache_ttl_seconds() -> float:
+    """0 (veya tanimsiz/gecersiz) => TTL YOK, surec omru boyunca gecerli."""
+    raw = (os.environ.get("GBMAID_GROWTH_CACHE_TTL_SECONDS") or "").strip()
+    if not raw:
+        return 0.0
+    try:
+        ttl = float(raw)
+    except ValueError:
+        _logger.warning(
+            "GBMAID_GROWTH_CACHE_TTL_SECONDS okunamadi (%r) -- TTL YOK kabul edildi.",
+            raw,
+        )
+        return 0.0
+    return ttl if ttl > 0 else 0.0
+
+
+def _growth_cohort_is_fresh(bundle: _GrowthCohortBundle, ttl: float) -> bool:
+    if ttl <= 0:
+        return True
+    return (time.monotonic() - bundle.built_at_monotonic) < ttl
+
+
+def reset_growth_cohort_cache() -> None:
+    """Onbellegi bosaltir (testler ve elle mudahale icin)."""
+    global _GROWTH_COHORT_CACHE
+    with _GROWTH_COHORT_LOCK:
+        _GROWTH_COHORT_CACHE = None
+
+
+def _build_growth_cohort_bundle(
+    patient_id: str,
+) -> tuple[_GrowthCohortBundle | None, dict[str, Any] | None]:
+    """Kohort geneli turevleri HESAPLAR -- onbellek mantigi YOK.
+
+    Hata metinleri onbellek oncesi davranisla BIREBIR ayni tutulmustur;
+    hangi asamada patladigi (`DB baglantisi` / `DB okuma` / `egri fit`)
+    yanitta korunur.
     """
-
     try:
         conn = db_connection_module.get_connection(readonly=True)
     except Exception as exc:  # savunmaci -- DB erisilemezse pipeline DURMAZ
@@ -577,7 +674,7 @@ def _build_growth_simulation_block(patient_id: str) -> dict[str, Any]:
             "growth_simulation blogu DB baglantisi kuramadi (patient_id=%s): %s",
             patient_id, exc,
         )
-        return {
+        return None, {
             "available": False,
             "not_available_reason": f"DB baglantisi kurulamadi: {type(exc).__name__}: {exc}",
         }
@@ -590,12 +687,98 @@ def _build_growth_simulation_block(patient_id: str) -> dict[str, Any]:
             "growth_simulation blogu beklenmedik hatayla basarisiz oldu "
             "(patient_id=%s): %s", patient_id, exc,
         )
-        return {
+        return None, {
             "available": False,
             "not_available_reason": f"Beklenmeyen hata (DB okuma): {type(exc).__name__}: {exc}",
         }
     finally:
         conn.close()
+
+    try:
+        fits = growth_simulation_module.fit_patient_growth_curves(series_df)
+    except Exception as exc:  # savunmaci
+        _logger.warning(
+            "growth_simulation fit blogu beklenmedik hatayla basarisiz oldu "
+            "(patient_id=%s): %s", patient_id, exc,
+        )
+        return None, {
+            "available": False,
+            "not_available_reason": f"Beklenmeyen hata (egri fit): {type(exc).__name__}: {exc}",
+        }
+
+    # RANO grup turevleri BILINCLI OLARAK BURADA HESAPLANMAZ.
+    # Ilk denemede hesaplanmislardi ve 21 test kirmiziya dondu
+    # (`KeyError: 'fit_status'`): o uc adim eskiden ancak hasta GECERLI bir
+    # RANO grubuna sahipse calisiyordu; pakete tasimak onlari kohort BOS
+    # olsa bile ERKEN calistirdi. Zaten pahali olan kisim onlar degil,
+    # `fit_patient_growth_curves`'tur -- onbellegin kapsami o kadardir.
+    return (
+        _GrowthCohortBundle(
+            series_df=series_df,
+            rano_df=rano_df,
+            fits=fits,
+            built_at_monotonic=time.monotonic(),
+        ),
+        None,
+    )
+
+
+def _load_growth_cohort(
+    patient_id: str,
+) -> tuple[_GrowthCohortBundle | None, dict[str, Any] | None]:
+    """Kohort paketini onbellekten dondurur, yoksa uretip onbellege alir.
+
+    Cift kontrollu kilit: es zamanli iki istek gelirse kohort IKI KEZ fit
+    edilmez (uvicorn, sync endpoint'leri is parcacigi havuzunda kosar).
+    """
+    global _GROWTH_COHORT_CACHE
+
+    if _growth_cache_disabled():
+        return _build_growth_cohort_bundle(patient_id)
+
+    ttl = _growth_cache_ttl_seconds()
+
+    cached = _GROWTH_COHORT_CACHE
+    if cached is not None and _growth_cohort_is_fresh(cached, ttl):
+        return cached, None
+
+    with _GROWTH_COHORT_LOCK:
+        cached = _GROWTH_COHORT_CACHE
+        if cached is not None and _growth_cohort_is_fresh(cached, ttl):
+            return cached, None
+
+        bundle, error = _build_growth_cohort_bundle(patient_id)
+        if error is not None:
+            return None, error  # HATA ONBELLEGE ALINMAZ
+        _GROWTH_COHORT_CACHE = bundle
+        _logger.info(
+            "growth_simulation kohort paketi onbellege alindi (TTL=%s).",
+            "yok" if ttl <= 0 else f"{ttl} sn",
+        )
+        return bundle, None
+
+
+def _build_growth_simulation_block(patient_id: str) -> dict[str, Any]:
+    """Buyume simulasyonu katmani -- OPSIYONEL/zenginlestirme, GERCEK
+    ZAMANLI hesaplanir (bkz. modul dokstring'i madde 4 "TASARIM KARARI").
+
+    `pipeline/growth_simulation.py`'nin fonksiyonlarini DOGRUDAN cagirir,
+    hicbirini yeniden yazmaz. Her basarisizlik/uygunsuzluk durumu ACIKCA
+    `not_available_reason` ile doner -- sessiz bos sonuc veya uydurma
+    projeksiyon YOK.
+    """
+
+    bundle, cohort_error = _load_growth_cohort(patient_id)
+    if cohort_error is not None:
+        return cohort_error
+    if bundle is None:  # pragma: no cover -- ikisi birden None olamaz
+        return {
+            "available": False,
+            "not_available_reason": (
+                "Beklenmeyen ic tutarsizlik: kohort paketi de hata da bos."
+            ),
+        }
+    series_df = bundle.series_df
 
     patient_series = series_df[series_df["patient_id"] == patient_id]
     if patient_series.empty:
@@ -615,17 +798,10 @@ def _build_growth_simulation_block(patient_id: str) -> dict[str, Any]:
             ),
         }
 
-    try:
-        fits = growth_simulation_module.fit_patient_growth_curves(series_df)
-    except Exception as exc:  # savunmaci
-        _logger.warning(
-            "growth_simulation fit blogu beklenmedik hatayla basarisiz oldu "
-            "(patient_id=%s): %s", patient_id, exc,
-        )
-        return {
-            "available": False,
-            "not_available_reason": f"Beklenmeyen hata (egri fit): {type(exc).__name__}: {exc}",
-        }
+    # Fit ARTIK burada yapilmaz -- kohort geneli oldugu icin onbellekten gelir.
+    # Hata yolu `_build_growth_cohort_bundle()` icinde, AYNI
+    # `not_available_reason` metniyle korundu.
+    fits = bundle.fits
 
     patient_fit = next((f for f in fits if f.patient_id == patient_id), None)
     if patient_fit is None:  # pragma: no cover -- seri bulunduysa fit de bulunmali
@@ -662,7 +838,7 @@ def _build_growth_simulation_block(patient_id: str) -> dict[str, Any]:
         ),
     }
 
-    rano_group_df = growth_simulation_module.assign_patient_rano_group(rano_df)
+    rano_group_df = growth_simulation_module.assign_patient_rano_group(bundle.rano_df)
     patient_group_row = rano_group_df[rano_group_df["patient_id"] == patient_id]
     if patient_group_row.empty:
         return {

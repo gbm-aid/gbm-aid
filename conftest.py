@@ -328,3 +328,46 @@ def _isolate_llm_environment(monkeypatch):
     except Exception:  # modul yoksa/import edilemiyorsa izolasyon gereksiz
         return
     monkeypatch.setattr(_llm_provider, "_dotenv_loaded", True, raising=False)
+
+
+# =====================================================================
+# BUYUME SIMULASYONU KOHORT ONBELLEGI IZOLASYONU -- 2026-09-17
+# =====================================================================
+# NEDEN VAR: `api/analyze_patient.py` 2026-09-17'de kohort geneli buyume
+# turevlerini (DB okuma + TUM LUMIERE kohortunun fit'i + RANO grup
+# dagilimi) SUREC-ICI bir onbellege aldi -- canli sunucuda olculen 58-71
+# saniyelik gecikmenin tek kaynagi oydu (LUMIERE disi hastalarda ayni
+# cagri 4,8-8,1 sn).
+#
+# YAN ETKI OLCULDU, VARSAYILMADI: onbellek eklenir eklenmez
+# `tests/test_api_analyze_patient.py` 30 testin 16'si KIRMIZI oldu; tek
+# tek kosuldugunda hepsi YESILDI. Sebep test kirlenmesiydi -- o dosyadaki
+# testler `growth_simulation_module.fetch_lumiere_*`'i monkeypatch edip
+# HER TEST ICIN FARKLI sahte kohort veriyor, ama ilk testin kohortu
+# onbellege girince sonrakiler onu goruyordu.
+#
+# COZUM: her testin BASINDA ve SONUNDA onbellek bosaltilir. Bir test
+# onbellek davranisinin KENDISINI olcuyorsa (bkz.
+# `tests/test_growth_cohort_cache.py`) kendi icinde tekrar doldurur --
+# yani niyet kodda GORUNUR olur.
+#
+# ⚠️ MODULU ZORLA IMPORT ETMEZ: `api.analyze_patient` agir bir moduldur
+# (shap/xgboost zinciri). Yalnizca ZATEN yuklenmisse sifirlar -- boylece
+# onunla ilgisi olmayan testlere hicbir maliyet binmez.
+
+
+@_pytest.fixture(autouse=True)
+def _reset_growth_cohort_cache():
+    """Testler arasi buyume-kohortu onbellegini sifirla."""
+
+    def _reset() -> None:
+        module = sys.modules.get("api.analyze_patient")
+        if module is None:
+            return
+        resetter = getattr(module, "reset_growth_cohort_cache", None)
+        if resetter is not None:
+            resetter()
+
+    _reset()
+    yield
+    _reset()

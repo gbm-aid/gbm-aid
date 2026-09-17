@@ -73,3 +73,25 @@ charset-normalizer==3.5.1
 fsspec==2026.7.0
 tqdm==4.70.0
 pillow==12.3.0
+
+# --- Hafta 5 (rag-agent) LLM saglayici SDK'si.
+# EKSIKLIK DUZELTMESI (2026-09-17): `pipeline/llm_provider.py:478`
+# `openai`'yi LAZY (fonksiyon icinde) import eder -- bu yuzden ne pytest
+# collection'i ne de herhangi bir test patliyordu, ve paket HICBIR
+# requirements dosyasinda PINLI DEGILDI. Gelistirme makinesinde elle
+# kurulu oldugu icin yerelde calisiyor, SUNUCUDA CALISMIYORDU.
+# OLCULEN SONUC (canli sunucu https://gbm-aid.tech, 2026-09-17):
+# `POST /analyze_patient` literatur blogu PubMed kaynaklarini (7 kaynak,
+# Upstash onbelleginden) donduruyor ama `summary_tr` NULL; `llm_reason`
+# alani birebir soyle diyordu:
+#     "LLM cagrisi basarisiz: LLMProviderError: 'openai' paketi kurulu
+#      degil. Kurulum: pip install openai"
+# Yapilandirma zinciri (GBMAID_LLM_ENABLED -> OPENAI_API_KEY -> saglayici/
+# model) SUNUCUDA ZATEN GECERLIYDI: `llm_provider.py` once onlari dogrular
+# (`:278` anahtar kontrolu), paket import'u EN SON adimdir -- yani bu hata
+# metnini almak, onceki uc kontrolun GECTIGININ kanitidir.
+# Bu bosluk 2026-08-28'deki `xgboost` bosluguyla AYNI SINIFTIR (bkz.
+# yukaridaki not): lazy import -> sessiz eksiklik -> yalniz gercek cagrida
+# patlama.
+# Pinlenen surum gelistirme makinesinde olculdu (importlib.metadata): 3.13.0
+openai==3.13.0
