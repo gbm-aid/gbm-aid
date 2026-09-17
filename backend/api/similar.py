@@ -242,7 +242,20 @@ class SimilarIndexArtifactsError(RuntimeError):
 
 
 class PatientNotInIndexError(RuntimeError):
-    """Hasta `patients` tablosunda var ama bu FAISS indeksinde yok."""
+    """Hasta `patients` tablosunda var ama bu FAISS indeksinde yok.
+
+    2026-09-17: `index_size` EKLENDI. Gerekce: 422 mesaji indeksin
+    kapsamini SABIT YAZIYORDU ("722 hasta ... UCSF DAHIL DEGIL"). UCSF'li
+    v2 indeksi (1017) devreye alininca o cumle SESSIZCE yanlis olurdu --
+    yani kullaniciya yanlis bir gerekce gosterirdi. Artik sayi YUKLU
+    ARTEFAKTTAN gelir; hangi indeksin servis edildigi `GBMAID_FAISS_
+    CLINICAL_RADIOMICS_INDEX_DIR` ile belirlenir.
+    """
+
+    def __init__(self, patient_id: str, *, index_size: int | None = None) -> None:
+        super().__init__(patient_id)
+        self.patient_id = patient_id
+        self.index_size = index_size
 
 
 # =====================================================================
@@ -460,7 +473,9 @@ def _query_all_neighbors_sorted(bundle: IndexBundle, patient_id: str) -> pd.Data
     `patient_id` indekste yoksa `PatientNotInIndexError` fırlatır."""
 
     if patient_id not in bundle.order.index:
-        raise PatientNotInIndexError(patient_id)
+        raise PatientNotInIndexError(
+            patient_id, index_size=int(bundle.index.ntotal)
+        )
 
     row_index = int(bundle.order.loc[patient_id, "row_index"])
     query_vector = bundle.index.reconstruct(row_index).reshape(1, -1).astype(np.float32)
@@ -843,15 +858,24 @@ def get_similar_patients(
             mgmt_status=mgmt_status,
             result_columns=_RESULT_METADATA_COLUMNS,
         )
-    except PatientNotInIndexError:
+    except PatientNotInIndexError as exc:
+        # 2026-09-17: kapsam artik SABIT YAZILMAZ -- yuklu artefaktin
+        # gercek boyutu raporlanir. Iki kilitli kapsam referans olarak
+        # verilir ki okuyan hangi indeksin servis edildigini anlasin.
+        yuklu = (
+            f"yüklü indeks {exc.index_size} hasta içeriyor; "
+            if exc.index_size is not None
+            else ""
+        )
         raise HTTPException(
             status_code=422,
             detail=(
-                f"{patient_id!r} clinical_radiomics_faiss v1 indeksinde YOK "
-                "(K1 kararı: yalnız UPenn 611 + LUMIERE 72 + TCGA 39 = 722 "
-                "hasta indekste; UCSF DAHİL DEĞİL). Açık durum: bu hasta "
-                "için benzer-hasta indeksi yok -- sessizce boş sonuç "
-                "DÖNÜLMEDİ."
+                f"{patient_id!r} clinical_radiomics_faiss indeksinde YOK "
+                f"({yuklu}kapsam ve kaynak dağılımı artefaktın "
+                "`manifest.json` dosyasındadır. K1 v1 = UPenn 611 + "
+                "LUMIERE 72 + TCGA 39 = 722, UCSF HARİÇ; 2026-09-17 v2 = "
+                "v1 + UCSF 295 = 1017). Açık durum: bu hasta için "
+                "benzer-hasta indeksi yok -- sessizce boş sonuç DÖNÜLMEDİ."
             ),
         )
 

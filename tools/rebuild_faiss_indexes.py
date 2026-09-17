@@ -530,13 +530,24 @@ def _fetch_source_wt93(
 
 
 def build_design_a_ham_c32(
-    cursor, *, scaler_fit_pool: str
+    cursor, *, scaler_fit_pool: str, include_ucsf: bool = False
 ) -> tuple[np.ndarray, pd.DataFrame, FaissBuildReport, "FrozenScaler"]:
-    """Tasarım A -- ham C32, ComBat'sız TEK ortak uzay (UPenn+LUMIERE+TCGA).
+    """Tasarım A -- ham C32, ComBat'sız TEK ortak uzay.
 
     🔒 K1 KİLİTLİ SEÇİM (2026-08-18, Barış) -- v1 ÜRETİM indeksi bu
     fonksiyonla kurulur. LUMIERE her zaman K2'nin kilitli kuralıyla
     (`fetch_lumiere_preop_canonical_visits()`, 72 hasta) dahil edilir.
+
+    `include_ucsf` (2026-09-17, Barış onayı) -- VARSAYILAN `False`, yani
+    v1 davranışı DEĞİŞMEDİ. `True` iken UCSF-PDGM de havuza girer
+    (ölçüldü: UPenn 611 + LUMIERE 72 + TCGA 39 + UCSF 295 = **1017**).
+    Bu, K1 taslağının 3-sınıflı kapsamının BİLİNÇLİ bir revizyonudur ve
+    ayrı bir artefakt dizinine yazılmalıdır -- v1 (722) raporlanan
+    artefakt olarak YERİNDE KALIR.
+
+    🔴 `include_ucsf=True` iken `scaler_fit_pool="index_pool"` KULLANILMAZ;
+    çağıran taraf (CLI) bunu sert biçimde reddeder. Gerekçe
+    `_select_scaler_fit_pool()` içindeki `upenn_lumiere_tcga` notunda.
     """
 
     warnings: list[str] = []
@@ -550,8 +561,15 @@ def build_design_a_ham_c32(
     tcga_wide, tcga_pivot, _ = _fetch_source_wt93(
         cursor, segmentation_tool=SEGMENTATION_TOOL_TCGA_C32
     )
+    if include_ucsf:
+        ucsf_wide, ucsf_pivot, _ = _fetch_source_wt93(
+            cursor, segmentation_tool=SEGMENTATION_TOOL_UCSF_C32
+        )
+    else:
+        ucsf_wide = pd.DataFrame()
 
-    non_empty_frames = [f for f in (upenn_wide, lumiere_wide, tcga_wide) if not f.empty]
+    candidate_frames = (upenn_wide, lumiere_wide, tcga_wide, ucsf_wide)
+    non_empty_frames = [f for f in candidate_frames if not f.empty]
     if not non_empty_frames:
         raise EmptyIndexPoolError(
             "Tasarım A: birleşik havuz boş -- hiçbir kaynaktan hasta indekse girmedi."
@@ -570,6 +588,8 @@ def build_design_a_ham_c32(
         source_map[pid] = LUMIERE_SOURCE_NAME
     for pid in tcga_wide.index:
         source_map[pid] = TCGA_SOURCE_NAME
+    for pid in ucsf_wide.index:
+        source_map[pid] = UCSF_SOURCE_NAME
     source_series = pd.Series(source_map).reindex(combined.index)
 
     combined_wt93 = combined[list(WT_FEATURE_COLUMNS)]
@@ -684,6 +704,28 @@ def _select_scaler_fit_pool(
         return matrix.loc[matrix.index.intersection(keep)]
     if scaler_fit_pool == "upenn_lumiere":
         keep = source_series[source_series.isin([UPENN_SOURCE_NAME, LUMIERE_SOURCE_NAME])].index
+        return matrix.loc[matrix.index.intersection(keep)]
+    if scaler_fit_pool == "upenn_lumiere_tcga":
+        # 2026-09-17 (Barış onayı) -- v2'de UCSF indekse GIRER ama scaler
+        # ORIJINAL v1 havuzuna (UPenn+LUMIERE+TCGA = 722) SABITLENIR.
+        #
+        # 🔴 NEDEN ZORUNLU: varsayilan `index_pool` ile UCSF eklenirse
+        # scaler 1017 hasta uzerinde YENIDEN fit edilir ve MEVCUT 722
+        # vektorun HEPSI degisir -- v1 yeniden uretilemez hale gelir ve
+        # raporlanmis kom&scedil;uluk kanitlari (2026-09-16: `TCGA-06-5412`
+        # -> `UPENN-GBM-00540`, L2 22,36) sessizce kayar.
+        #
+        # Ayrica bu secim, harici test setine EGITIM-TUREVI bir donusum
+        # uygulama tartismasini da acik tutar: UCSF vektorleri v1'in
+        # dondurulmus istatistikleriyle DONUSTURULUR (out-of-sample),
+        # v1'in istatistiklerini DEGISTIRMEZ. FAISS modelin parcasi
+        # DEGILDIR (C-index/EPV gibi hicbir raporlanan sayiyi etkilemez),
+        # ama bu asimetri raporda BEYAN EDILMELIDIR.
+        keep = source_series[
+            source_series.isin(
+                [UPENN_SOURCE_NAME, LUMIERE_SOURCE_NAME, TCGA_SOURCE_NAME]
+            )
+        ].index
         return matrix.loc[matrix.index.intersection(keep)]
     raise ValueError(f"Bilinmeyen scaler_fit_pool={scaler_fit_pool!r}")
 
@@ -901,11 +943,21 @@ def main(argv: list[str] | None = None) -> int:
     combat_group.add_argument("--no-combat", action="store_true", help="Tasarım A (ham C32, ComBat'sız) -- K1'in SEÇTİĞİ v1 üretim tasarımı.")
     parser.add_argument(
         "--scaler-fit-pool",
-        choices=["index_pool", "upenn_only", "upenn_lumiere"],
+        choices=["index_pool", "upenn_only", "upenn_lumiere", "upenn_lumiere_tcga"],
         default="index_pool",
         # 2026-09-14 (kalem 5): yol düzeltildi -- taslak `concepts/` değil
         # `archive/` altında (wiki hard rule #4 taşıması, diskten doğrulandı).
         help="Dondurulmuş StandardScaler'ın fit edileceği kohort (uygulama detayı, K1'den bağımsız AÇIK -- bkz. archive/faiss-vektor-spesifikasyonu-taslak.md; güncel karar: decisions/2026-09-13-k7-faiss-v1-vektor-icerigi-onaylandi.md).",
+    )
+    parser.add_argument(
+        "--include-ucsf",
+        action="store_true",
+        help=(
+            "Tasarım A havuzuna UCSF-PDGM'yi de kat (v2, 1017 hasta). "
+            "VARSAYILAN KAPALI -- v1 (722) davranışı değişmez. "
+            "`--scaler-fit-pool upenn_lumiere_tcga` ZORUNLUDUR ve ayrı bir "
+            "`--output-dir` verilmelidir."
+        ),
     )
     parser.add_argument("--build-omics", action="store_true", help="molecular_omics_faiss'i de üret (opsiyonel, 11-boyut kilitli).")
     parser.add_argument("--apply", action="store_true", help="Belirtilmezse dry-run (dosya YAZILMAZ).")
@@ -916,6 +968,26 @@ def main(argv: list[str] | None = None) -> int:
         help="--apply modunda indeks dosyalarının yazılacağı dizin.",
     )
     args = parser.parse_args(argv)
+
+    # 🔴 SESSIZ SAPMA KALKANI (2026-09-17): UCSF havuza girerken varsayilan
+    # `index_pool` birakilirsa scaler 1017 hasta uzerinde YENIDEN fit edilir
+    # ve MEVCUT 722 vektorun HEPSI degisir. Bu, v1'i yeniden uretilemez
+    # yapar ve raporlanmis komsuluk kanitlarini kaydirir. Bu yuzden burada
+    # SERT DURULUR -- otomatik "dogrusunu secme" YAPILMAZ, cunku o da sessiz
+    # bir karar olurdu.
+    if args.include_ucsf and args.scaler_fit_pool == "index_pool":
+        parser.error(
+            "--include-ucsf ile --scaler-fit-pool index_pool BIRLIKTE "
+            "KULLANILAMAZ: scaler 1017 hasta uzerinde yeniden fit edilir ve "
+            "v1'in 722 vektorunun HEPSI degisir. Dogru kullanim: "
+            "--include-ucsf --scaler-fit-pool upenn_lumiere_tcga "
+            "--output-dir <v1'DEN FARKLI bir dizin>"
+        )
+    if args.include_ucsf and args.combat:
+        parser.error(
+            "--include-ucsf yalniz Tasarim A (--no-combat) icin tanimlidir; "
+            "UCSF ComBat fit'ine GIRMEZ (CLAUDE.md kritik kural)."
+        )
 
     connection = get_connection(readonly=True)
     try:
@@ -936,7 +1008,9 @@ def main(argv: list[str] | None = None) -> int:
                     )
             else:
                 vectors, source_metadata, report, scaler = build_design_a_ham_c32(
-                    cursor, scaler_fit_pool=args.scaler_fit_pool
+                    cursor,
+                    scaler_fit_pool=args.scaler_fit_pool,
+                    include_ucsf=args.include_ucsf,
                 )
                 clinical_frames = [
                     fetch_patients_metadata_frame(cursor, source_name=UPENN_SOURCE_NAME)
@@ -948,6 +1022,10 @@ def main(argv: list[str] | None = None) -> int:
                 clinical_frames.append(
                     fetch_patients_metadata_frame(cursor, source_name=TCGA_SOURCE_NAME)
                 )
+                if UCSF_SOURCE_NAME in report.source_counts:
+                    clinical_frames.append(
+                        fetch_patients_metadata_frame(cursor, source_name=UCSF_SOURCE_NAME)
+                    )
             clinical_frames = [f for f in clinical_frames if not f.empty]
             clinical_metadata = pd.concat(clinical_frames, axis=0, sort=False)
             clinical_metadata = clinical_metadata.reindex(source_metadata.index)

@@ -39,6 +39,15 @@ WorkingDirectory=/opt/gbmaid
 # import ADLARI degismedi (`from pipeline.x import y`).
 Environment=PYTHONPATH=/opt/gbmaid/backend
 Environment=PYTHONUNBUFFERED=1
+# 2026-09-17 (Baris onayi) -- FAISS benzer-hasta indeksi v2'ye alindi.
+#   v1 = UPenn 611 + LUMIERE 72 + TCGA 39 = 722  (UCSF HARIC)
+#   v2 = v1 + UCSF 295                   = 1017
+# v1 artefakti DISKTE DURUYOR ve DEPO VARSAYILANIDIR (testler onu bekler:
+# tests/test_api_similar.py `index_size == 722`). Servis hangi indeksi
+# kullanacagini YALNIZ bu satirla secer -- geri alis: satiri yorumla +
+# `systemctl daemon-reload && systemctl restart gbmaid`.
+# 🔴 Dizin YOKSA /similar 503 verir; artefakt ONCE kopyalanmalidir.
+Environment=GBMAID_FAISS_CLINICAL_RADIOMICS_INDEX_DIR=/opt/gbmaid/artifacts/week3/faiss_index_v2_ucsf
 
 # 127.0.0.1'e baglanir: disariya YALNIZ Caddy uzerinden acilir.
 ExecStart=/opt/gbmaid/.venv/bin/python /opt/gbmaid/tools/run_site.py \
